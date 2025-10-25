@@ -18,13 +18,15 @@ import {
   setLogLevel,
   updateDoc
 } from 'firebase/firestore';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import AdminUserManagement from "./components/AdminUserManagement";
 import AppHeader from "./components/AppHeader";
 import handleLogin from "./components/handleLogin";
 import HandleSignOut from "./components/handleSignOut";
 import handleSignUp from "./components/handleSignUp";
 import LoadingSpinner from "./components/LoadingSpinner";
+import ProtectedRoute from "./components/ProtectedRoute";
 import LibrarianDashboard from "./pages/LibrarianDashboard";
 import { default as LoginScreen } from "./pages/Login";
 import ReaderView from "./pages/ReaderDashboard";
@@ -454,103 +456,8 @@ const Chatbot = () => {
  * Book Card (Reader View)
  */
 // const BookCard 
-//   const [showSummary, setShowSummary] = useState(false);
-//   const [summaryContent, setSummaryContent] = useState("");
-//   const [isSummarizing, setIsSummarizing] = useState(false);
-//   const getNextAvailableDate = (borrowedCopies) => {
-//     if (!Array.isArray(borrowedCopies) || borrowedCopies.length === 0) {
-//       return null;
-//     }
-//     try {
-//       const validDueDates = borrowedCopies
-//         .map(c => c.dueDate)
-//         .filter(date => date instanceof Date && !isNaN(date));
-//       return validDueDates.length > 0 ? new Date(Math.min(...validDueDates.map(date => date.getTime()))) : null;
-//     } catch (e) {
-//       console.error("Error calculating next available date:", e);
-//       return null;
-//     }
-//   };
-//   const isAvailable = book.availableQuantity > 0;
 
-//   // Find the earliest due date from borrowed copies
-//   const nextAvailableDate = getNextAvailableDate(book.borrowedCopies);
-
-
-//   const handleSummarize = async () => {
-//     if (!apiKey) {
-//       setSummaryContent("Cannot summarize: Gemini API Key is missing.");
-//       setShowSummary(true);
-//       return;
-//     }
-//     setShowSummary(true);
-//     setIsSummarizing(true);
-//     setSummaryContent("");
-//     try {
-//       const systemPrompt = "You are a helpful library assistant. Provide a brief, one-paragraph summary of the book.";
-//       const userQuery = `Book: "${book.title}" by ${book.author}`;
-//       const summary = await callGemini(userQuery, systemPrompt, false);
-//       setSummaryContent(summary);
-//     } catch (error) {
-//       console.error("Error summarizing book:", error);
-//       setSummaryContent(`Could not generate summary: ${error.message}. Please try again.`);
-//     }
-//     setIsSummarizing(false);
-//   };
-
-//   return (
-//     <>
-//       <li className="flex flex-col p-4 bg-white rounded-lg shadow transition-shadow hover:shadow-md space-y-3">
-//         {/* Book Info */}
-//         <div className="flex-1">
-//           <h3 className="text-lg font-semibold text-indigo-700">{book.title}</h3>
-//           <p className="text-sm text-gray-600">by {book.author}</p>
-//           <p className="text-xs text-gray-500 uppercase tracking-wider mt-1">{book.genre}</p>
-//         </div>
-
-//         {/* Availability & Location */}
-//         <div className="flex items-center justify-between text-sm">
-//           <div className={`font-medium ${isAvailable ? 'text-green-600' : 'text-red-600'}`}>
-//             {isAvailable
-//               ? `Available: ${book.availableQuantity} / ${book.totalQuantity}`
-//               : `Available after: ${nextAvailableDate ? nextAvailableDate.toLocaleDateString() : 'Unknown'}` // Changed N/A to Unknown
-//             }
-//           </div>
-//           <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-//             Rack: {book.rack}
-//           </div>
-//         </div>
-
-//         {/* Actions */}
-//         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full">
-//           <button
-//             onClick={() => onBorrow(book.id)}
-//             disabled={!isAvailable || hasBorrowed}
-//             className="px-4 py-2 rounded-md text-sm font-medium transition-colors w-full sm:w-auto justify-center bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-//           >
-//             {hasBorrowed ? 'Already Borrowed' : 'Borrow'}
-//           </button>
-//           <button
-//             onClick={handleSummarize}
-//             disabled={!apiKey} // Disable if API key missing
-//             title={!apiKey ? "Gemini API Key missing in .env" : "Summarize this book using AI"}
-//             className="px-4 py-2 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium w-full sm:w-auto justify-center disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
-//           >
-//             Summarize ✨
-//           </button>
-//         </div>
-//       </li>
-//       {showSummary && (
-//         <InfoModal
-//           title={`Summary for "${book.title}"`}
-//           content={summaryContent}
-//           isLoading={isSummarizing}
-//           onClose={() => setShowSummary(false)}
-//         />
-//       )}
-//     </>
-//   );
-// };
+//   const handleSummarize 
 
 /**
  * My Borrowed Book Card (Reader View)
@@ -571,37 +478,6 @@ const Chatbot = () => {
  * Main View for Librarians
  */
 // const LibrarianDashboard 
-//   // Sort books alphabetically by title for display
-//   const sortedBooks = React.useMemo(() => {
-//     // Add guard against non-string titles during sort
-//     return [...books].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-//   }, [books]);
-
-//   return (
-//     <div className="space-y-8">
-//       {/* Add Book Form */}
-//       <section>
-//         <AddBookForm onAddBook={onAddBook} isLoading={isSubmitting} />
-//       </section>
-
-//       {/* Manage Collection Section */}
-//       <section className="bg-white/50 backdrop-blur-sm rounded-lg shadow-inner p-4 sm:p-6">
-//         <h2 className="text-2xl font-semibold text-gray-800 mb-6">Manage Collection ({sortedBooks.length} books)</h2>
-//         <ul className="space-y-4">
-//           {sortedBooks.length > 0 ? sortedBooks.map(book => (
-//             <LibrarianBookItem
-//               key={book.id}
-//               book={book}
-//               onDelete={onDelete}
-//             />
-//           )) : (
-//             <p className="text-gray-500 text-center py-4">The library is empty. Add a book using the form above.</p>
-//           )}
-//         </ul>
-//       </section>
-//     </div>
-//   );
-// };
 
 /**
  * User Role Management Item (Admin View)
@@ -620,9 +496,101 @@ const Chatbot = () => {
  */
 
 
-/**
- * Main App Component
- */
+// Main App Content Component (handles routing logic)
+const AppContent = ({
+  books, userId, userRole, userEmail,
+  onAddBook, onDelete, onBorrow, onReturn,
+  isSubmitting, error, setError,
+  allUsers, loadingUsers, onUpdateRole,
+  loadingBooks, onSignOut
+}) => {
+  // Show loading spinner while books are loading
+  if (loadingBooks) {
+    return <LoadingSpinner />;
+  }
+
+  // Display general errors
+  if (error) {
+    return (
+      <div className="text-center p-6 sm:p-10 bg-red-100 border border-red-300 rounded-lg shadow-sm">
+        <p className="text-red-700 font-semibold text-lg mb-2">An Application Error Occurred</p>
+        <p className="text-red-600 text-sm">{error}</p>
+        <button
+          onClick={() => setError(null)}
+          className="mt-4 px-3 py-1 bg-red-200 text-red-800 rounded-md text-sm hover:bg-red-300"
+        >
+          Dismiss
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <AppHeader
+        onSignOut={onSignOut}
+        userEmail={userEmail}
+        userRole={userRole}
+      />
+
+      <main>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          <Route
+            path="/login"
+            element={userId ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
+                {userRole === 'admin' ? (
+                  <div className="space-y-8">
+                    <AdminUserManagement
+                      allUsers={allUsers}
+                      loadingUsers={loadingUsers}
+                      onUpdateRole={onUpdateRole}
+                      currentUserId={userId}
+                    />
+                    <LibrarianDashboard
+                      books={books}
+                      onAddBook={onAddBook}
+                      onDelete={onDelete}
+                      isSubmitting={isSubmitting}
+                    />
+                  </div>
+                ) : userRole === 'librarian' ? (
+                  <LibrarianDashboard
+                    books={books}
+                    onAddBook={onAddBook}
+                    onDelete={onDelete}
+                    isSubmitting={isSubmitting}
+                  />
+                ) : userRole === 'reader' ? (
+                  <ReaderView
+                    books={books}
+                    userId={userId}
+                    onBorrow={onBorrow}
+                    onReturn={onReturn}
+                  />
+                ) : (
+                  <p className="text-center text-red-600 font-semibold p-10">Error: Unknown user role assigned.</p>
+                )}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to={userId ? "/dashboard" : "/login"} replace />} />
+        </Routes>
+      </main>
+
+      <Chatbot />
+    </>
+  );
+};
+
 export default function App() {
   // App State
   const [books, setBooks] = useState([]);
@@ -1100,113 +1068,32 @@ export default function App() {
     );
   }
 
-  // --- User is logged in and has a role - Render the main application ---
-  const renderAppContent = () => {
-    // Determine loading state based on role
-    const isAdminLoading = userRole === 'admin' && (loadingBooks || loadingUsers);
-    const isLibrarianLoading = userRole === 'librarian' && loadingBooks;
-    const isReaderLoading = userRole === 'reader' && loadingBooks;
-
-    if (isAdminLoading || isLibrarianLoading || isReaderLoading) {
-      return <LoadingSpinner />;
-    }
-
-    // Display general errors (like Firestore connection issues, permission errors)
-    // Auth errors are handled by the AuthContainer or the loading screen above
-    if (error) {
-      return (
-        <div className="text-center p-6 sm:p-10 bg-red-100 border border-red-300 rounded-lg shadow-sm">
-          <p className="text-red-700 font-semibold text-lg mb-2">An Application Error Occurred</p>
-          <p className="text-red-600 text-sm">{error}</p>
-          <button
-            onClick={() => setError(null)} // Allow dismissing the error
-            className="mt-4 px-3 py-1 bg-red-200 text-red-800 rounded-md text-sm hover:bg-red-300"
-          >
-            Dismiss
-          </button>
-        </div>
-      );
-    }
-
-    // --- ROLE-BASED RENDERING ---
-    // Pass necessary state and handlers down to the specific views
-
-    if (userRole === 'admin') {
-      return (
-        <div className="space-y-8">
-          <AdminUserManagement
-            allUsers={allUsers}
-            loadingUsers={loadingUsers} // Pass loading state
-            onUpdateRole={handleUpdateUserRole}
-            currentUserId={userId} // Pass current user ID
-          />
-          {/* Admin also gets the full Librarian dashboard */}
-          <LibrarianDashboard
-            books={books}
-            onAddBook={addBook}
-            onDelete={deleteBook}
-            isSubmitting={submitting}
-          />
-        </div>
-      );
-    }
-
-    if (userRole === 'librarian') {
-      return <LibrarianDashboard
-        books={books}
-        onAddBook={addBook}
-        onDelete={deleteBook}
-        isSubmitting={submitting}
-      />;
-    }
-
-    if (userRole === 'reader') {
-      return <ReaderView
-        books={books}
-        userId={userId}
-        onBorrow={handleBorrow}
-        onReturn={handleReturn}
-      />;
-    }
-
-    // Fallback for unknown role (should be caught earlier, but good practice)
-    return <p className="text-center text-red-600 font-semibold p-10">Error: Unknown user role assigned.</p>;
-  };
 
   // Main App layout for authenticated users
   return (
     <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen font-inter">
-      <div className="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8 pb-24"> {/* Increased max-width */}
+      <div className="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8 pb-24">
         <Router>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/login" element={<LoginScreen />} />
-            {/* <Route path="/signup" element={<SignUp />} /> */}
-
-            {/* Protected routes (example) */}
-            <Route path="/reader" element={<ReaderView />} />
-            <Route path="/librarian" element={<LibrarianDashboard />} />
-            {/* <Route path="/admin" element={<AdminDashboard />} /> */}
-
-            {/* Catch-all for unknown routes */}
-            {/* <Route path="*" element={<NotFound />} /> */}
-          </Routes>
+          <AppContent
+            books={books}
+            userId={userId}
+            userRole={userRole}
+            userEmail={userEmail}
+            onAddBook={addBook}
+            onDelete={deleteBook}
+            onBorrow={handleBorrow}
+            onReturn={handleReturn}
+            isSubmitting={submitting}
+            error={error}
+            setError={setError}
+            allUsers={allUsers}
+            loadingUsers={loadingUsers}
+            onUpdateRole={handleUpdateUserRole}
+            loadingBooks={loadingBooks}
+            onSignOut={() => HandleSignOut(auth, { setBooks, setAllUsers })}
+          />
         </Router>
-        <AppHeader
-          onSignOut={() => HandleSignOut({ setBooks, setAllUsers })}
-          userEmail={userEmail}
-          userRole={userRole}
-        />
-
-        <main>
-          {renderAppContent()}
-
-        </main>
       </div>
-
-      {/* Chatbot Launcher (available to all logged-in users) */}
-      <Chatbot />
     </div>
   );
 }

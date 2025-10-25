@@ -1,4 +1,5 @@
 import React from 'react';
+import UserRoleItem from './UserRoleItem';
 
 const AdminUserManagement = ({ allUsers, loadingUsers, onUpdateRole, currentUserId }) => {
     // Sort users alphabetically by email for display
