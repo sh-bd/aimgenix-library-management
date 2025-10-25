@@ -499,7 +499,7 @@ const Chatbot = () => {
 // Main App Content Component (handles routing logic)
 const AppContent = ({
   books, userId, userRole, userEmail,
-  onAddBook, onDelete, onBorrow, onReturn,
+  onAddBook, onDelete, onUpdate, onBorrow, onReturn,
   isSubmitting, error, setError,
   allUsers, loadingUsers, onUpdateRole,
   loadingBooks, onSignOut
@@ -558,6 +558,7 @@ const AppContent = ({
                       books={books}
                       onAddBook={onAddBook}
                       onDelete={onDelete}
+                      onUpdate={onUpdate}
                       isSubmitting={isSubmitting}
                     />
                   </div>
@@ -566,6 +567,7 @@ const AppContent = ({
                     books={books}
                     onAddBook={onAddBook}
                     onDelete={onDelete}
+                    onUpdate={onUpdate}
                     isSubmitting={isSubmitting}
                   />
                 ) : userRole === 'reader' ? (
@@ -911,6 +913,36 @@ export default function App() {
     }
   };
 
+  const updateBook = async (updatedBook) => {
+    // Check permissions
+    if (!userId || (userRole !== 'librarian' && userRole !== 'admin')) {
+      setError("Permission denied: Only Librarians and Admins can update books.");
+      console.warn("Permission denied for updateBook action by user:", userId, "with role:", userRole);
+      return;
+    }
+    setError(null);
+    try {
+      const bookDocRef = doc(db, booksCollectionPath, updatedBook.id);
+      // Only update the fields that should be editable
+      await updateDoc(bookDocRef, {
+        title: updatedBook.title,
+        author: updatedBook.author,
+        genre: updatedBook.genre,
+        rack: updatedBook.rack,
+        totalQuantity: updatedBook.totalQuantity,
+        availableQuantity: updatedBook.availableQuantity
+      });
+      console.log("Book updated:", updatedBook.id);
+    } catch (e) {
+      console.error("Error updating document:", e);
+      if (e.code === 'permission-denied') {
+        setError("Permission denied to update book. Check Firestore rules.");
+      } else {
+        setError(`Failed to update book: ${e.message}`);
+      }
+    }
+  };
+
   const handleBorrow = async (bookId) => {
     // Check permissions
     if (!userId || userRole !== 'reader') {
@@ -1081,6 +1113,7 @@ export default function App() {
             userEmail={userEmail}
             onAddBook={addBook}
             onDelete={deleteBook}
+            onUpdate={updateBook}
             onBorrow={handleBorrow}
             onReturn={handleReturn}
             isSubmitting={submitting}
