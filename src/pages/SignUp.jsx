@@ -5,7 +5,6 @@ import { signUpUser } from "../components/handleSignUp";
 const SignUpScreen = ({ onSwitchToLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("reader");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,7 +14,8 @@ const SignUpScreen = ({ onSwitchToLogin }) => {
     setError("");
 
     try {
-      await signUpUser(email, password, role);
+      // Always sign up as "reader"
+      await signUpUser(email, password, "reader");
       alert("✅ Account created successfully!");
       setEmail("");
       setPassword("");
@@ -70,19 +70,11 @@ const SignUpScreen = ({ onSwitchToLogin }) => {
         />
       </div>
 
-      <div>
-        <label htmlFor="signup-role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-        <select
-          id="signup-role"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-        >
-          <option value="reader">Reader</option>
-          <option value="librarian">Librarian</option>
-          <option value="admin">Admin</option>
-        </select>
-        <p className="text-xs text-gray-500 mt-1">Note: "Admin" is for testing. In a real app, this would be set manually.</p>
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+        <p className="text-xs text-blue-800">
+          <strong>Note:</strong> All new accounts are created as <strong>Reader</strong> accounts.
+          Contact an administrator to upgrade your account to Librarian or Admin.
+        </p>
       </div>
 
       <button
