@@ -1,31 +1,31 @@
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
-  addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
   query,
-  runTransaction,
   updateDoc
 } from 'firebase/firestore';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import handleUpdateUserRole from "./components/admin/handleUpdateUserRole";
 import AdminUserManagement from "./components/AdminUserManagement";
 import AppHeader from "./components/AppHeader";
+import AuthContainer from './components/AuthContainer';
+import Chatbot from './components/Chatbot';
+import handleBorrow from './components/handleBorrow';
 import handleLogin from "./components/handleLogin";
+import handleReturn from './components/handleReturn';
 import HandleSignOut from "./components/handleSignOut";
 import handleSignUp from "./components/handleSignUp";
+import addBook from './components/librarian/addBook';
+import deleteBook from './components/librarian/deleteBook';
 import LoadingSpinner from "./components/LoadingSpinner";
 import ProtectedRoute from "./components/ProtectedRoute";
-import LibrarianDashboard from "./pages/LibrarianDashboard";
-import { default as LoginScreen } from "./pages/Login";
-import ReaderView from "./pages/ReaderDashboard";
-import SignUpScreen from "./pages/SignUp";
-
 import { auth, booksCollectionPath, db, firebaseConfig, usersCollectionPath } from "./config/firebase";
-import { apiKey, callGemini } from "./config/gemini";
+import LibrarianDashboard from "./pages/LibrarianDashboard";
+import ReaderView from "./pages/ReaderDashboard";
 
 // /**
 //  * Finds the earliest due date from a list of borrowed copies.
@@ -48,274 +48,65 @@ import { apiKey, callGemini } from "./config/gemini";
 // };
 
 
-/**
- * Calculates the due date, skipping Fridays and Saturdays.
- * @param {Date} issueDate The date the book is issued.
- * @returns {Date} The calculated due date.
- */
-const calculateDueDate = (issueDate = new Date()) => {
-  const dueDate = new Date(issueDate.getTime());
-  dueDate.setDate(dueDate.getDate() + 14); // Add 14 days
+// /**
+//  * Calculates the due date, skipping Fridays and Saturdays.
+//  * @param {Date} issueDate The date the book is issued.
+//  * @returns {Date} The calculated due date.
+//  */
+// const calculateDueDate = (issueDate = new Date()) => {
+//   const dueDate = new Date(issueDate.getTime());
+//   dueDate.setDate(dueDate.getDate() + 14); // Add 14 days
 
-  const dayOfWeek = dueDate.getDay(); // 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
+//   const dayOfWeek = dueDate.getDay(); // 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
 
-  if (dayOfWeek === 5) { // If it's Friday
-    dueDate.setDate(dueDate.getDate() + 2); // Move to Sunday
-  } else if (dayOfWeek === 6) { // If it's Saturday
-    dueDate.setDate(dueDate.getDate() + 1); // Move to Sunday
-  }
+//   if (dayOfWeek === 5) { // If it's Friday
+//     dueDate.setDate(dueDate.getDate() + 2); // Move to Sunday
+//   } else if (dayOfWeek === 6) { // If it's Saturday
+//     dueDate.setDate(dueDate.getDate() + 1); // Move to Sunday
+//   }
 
-  // Set time to end of day
-  dueDate.setHours(23, 59, 59, 999);
-  return dueDate;
-};
-/**
- * Calls the Gemini API with exponential backoff for retries.
- * @param {string} userQuery - The user's prompt.
- * @param {string | null} systemInstruction - The system prompt (optional).
- * @param {boolean} jsonOutput - Whether to request a JSON response.
- * @param {Object | null} responseSchema - Custom JSON schema (optional, used when jsonOutput=true).
- * @returns {Promise<string>} The text response from the API.
- */
-if (!apiKey) {
-  console.warn("Gemini API Key (VITE_GEMINI_API_KEY) not found in import.meta.env. API calls will fail.");
-}
+//   // Set time to end of day
+//   dueDate.setHours(23, 59, 59, 999);
+//   return dueDate;
+// };
+// /**
+//  * Calls the Gemini API with exponential backoff for retries.
+//  * @param {string} userQuery - The user's prompt.
+//  * @param {string | null} systemInstruction - The system prompt (optional).
+//  * @param {boolean} jsonOutput - Whether to request a JSON response.
+//  * @param {Object | null} responseSchema - Custom JSON schema (optional, used when jsonOutput=true).
+//  * @returns {Promise<string>} The text response from the API.
+//  */
+// if (!apiKey) {
+//   console.warn("Gemini API Key (VITE_GEMINI_API_KEY) not found in import.meta.env. API calls will fail.");
+// }
 
 // --- Helper Components ---
 
 // const LoadingSpinner 
 <LoadingSpinner />
 
-const Modal = ({ title, message, onConfirm, onCancel, confirmText = "Confirm", cancelText = "Cancel" }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 mb-4">{message}</p>
-      <div className="flex justify-end space-x-2">
-        <button
-          onClick={onCancel}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 transition-colors"
-        >
-          {cancelText}
-        </button>
-        <button
-          onClick={onConfirm}
-          className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors"
-        >
-          {confirmText}
-        </button>
-      </div>
-    </div>
-  </div>
-);
+// const Modal 
 
-const InfoModal = ({ title, content, onClose, isLoading }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="text-sm text-gray-600 mb-6 min-h-[100px]">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" role="status">
-              <span className="sr-only">Loading...</span>
-            </div>
-          </div>
-        ) : (
-          <p className="whitespace-pre-wrap">{content}</p>
-        )}
-      </div>
-      <div className="flex justify-end">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition-colors"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-);
+// const InfoModal 
 
 // --- Auth Components ---
 
 // const LoginScreen
 
-// import NotFound from './pages/NotFound'
-
-
-const AuthContainer = ({ onLogin, onSignUp, authError }) => {
-  const [isLoginView, setIsLoginView] = useState(true);
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <h1 className="text-3xl font-bold text-center text-indigo-800 mb-6">
-          AIMGENIX Library
-        </h1>
-        {isLoginView ? (
-          <LoginScreen
-            onLogin={onLogin}
-            onSwitchToSignUp={() => setIsLoginView(false)}
-            error={authError}
-          />
-        ) : (
-          <SignUpScreen
-            onSignUp={onSignUp}
-            onSwitchToLogin={() => setIsLoginView(true)}
-            error={authError}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
+// const AuthContainer 
 
 // --- Library Components ---
 
 /**
  * Chatbot Modal Component
  */
-const ChatbotModal = ({ isOpen, onClose, chatHistory, onSendMessage, userInput, setUserInput, isLoading }) => {
-  const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(scrollToBottom, [chatHistory]);
-
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (userInput.trim() && !isLoading && apiKey) { // Check API key before sending
-      onSendMessage();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed bottom-24 right-6 z-50 w-full max-w-md bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col h-[70vh]">
-      <header className="flex items-center justify-between p-4 border-b border-gray-200 rounded-t-lg bg-indigo-600 text-white">
-        <h3 className="text-lg font-semibold">AIMGENIX Library Assistant</h3>
-        <button
-          onClick={onClose}
-          className="text-white hover:text-indigo-100 transition-colors"
-          aria-label="Close chat"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-      </header>
-
-      {/* Chat Messages */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4">
-        {chatHistory.map((msg, index) => (
-          <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] p-3 rounded-lg ${msg.role === 'user'
-                ? 'bg-indigo-500 text-white'
-                : 'bg-gray-100 text-gray-800'
-                }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-800 p-3 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <form onSubmit={handleSend} className="p-4 border-t border-gray-200">
-        {!apiKey && (
-          <p className="text-xs text-center text-red-600 mb-2">Chat disabled: Gemini API Key missing.</p>
-        )}
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder={apiKey ? "Ask for book suggestions..." : "API Key missing"}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
-            disabled={isLoading || !apiKey} // Disable if no API key
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !userInput.trim() || !apiKey} // Disable if no API key
-            title={!apiKey ? "Gemini API Key missing in .env" : "Send message"}
-            className="w-10 h-10 flex items-center justify-center bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed"
-            aria-label="Send message"
-          >
-            <svg className="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
+// const ChatbotModal 
 
 /**
  * Chatbot Launcher Component
  */
-const Chatbot = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [userInput, setUserInput] = useState("");
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'model', text: apiKey ? 'Hello! I am the AIMGENIX Library Assistant. Ask me for book suggestions based on your interests!' : 'Hello! Chatbot is currently unavailable (missing API key).' }
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = async () => {
-    if (!apiKey) return; // Don't send if no key
-    const message = userInput;
-    setUserInput("");
-    setChatHistory(prev => [...prev, { role: 'user', text: message }]);
-    setIsLoading(true);
-
-    try {
-      const systemPrompt = "You are a friendly and helpful library assistant for the AIMGENIX Library. Your main role is to provide book suggestions to readers. You can suggest books based on genre, author, or topics. You cannot access the library's current database, so you cannot check if a book is available. Keep your answers concise and conversational.";
-      const response = await callGemini(message, systemPrompt, false);
-      setChatHistory(prev => [...prev, { role: 'model', text: response }]);
-    } catch (error) {
-      console.error("Chatbot error:", error);
-      setChatHistory(prev => [...prev, { role: 'model', text: `I'm sorry, I encountered an error: ${error.message}. Please try again.` }]);
-    }
-    setIsLoading(false);
-  };
-
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-all transform hover:scale-110"
-        aria-label="Open chatbot"
-        title="Open Library Assistant Chat"
-      >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-      </button>
-      <ChatbotModal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        chatHistory={chatHistory}
-        onSendMessage={handleSendMessage}
-        userInput={userInput}
-        setUserInput={setUserInput}
-        isLoading={isLoading}
-      />
-    </>
-  );
-};
-
-// --- Role-Based Components ---
+// const Chatbot 
 
 /**
  * Book Card (Reader View)
@@ -692,91 +483,13 @@ export default function App() {
 
   // --- Admin Action ---
 
-  const handleUpdateUserRole = async (targetUserId, newRole) => {
-    setError(null); // Clear general errors
-    console.log(`Attempting to update user ${targetUserId} to role ${newRole}`);
-
-    // Basic validation
-    if (!['reader', 'librarian', 'admin'].includes(newRole)) {
-      console.error("Invalid role specified:", newRole);
-      setError("Invalid role selected.");
-      throw new Error("Invalid role selected.");
-    }
-
-    if (targetUserId === userId) {
-      console.warn("Admin attempted to change their own role. Action blocked.");
-      setError("Cannot change your own role."); // Inform user
-      throw new Error("Cannot change own role."); // Throw to handle in calling component
-    }
-
-    try {
-      const userDocRef = doc(db, usersCollectionPath, targetUserId);
-      await updateDoc(userDocRef, {
-        role: newRole
-      });
-      console.log("User role update successful in Firestore.");
-      // Firestore listener should automatically update the UI state
-    } catch (e) {
-      console.error("Error updating user role in Firestore:", e);
-      if (e.code === 'permission-denied') {
-        setError("Permission denied to update user role. Check Firestore rules.");
-      } else {
-        setError(`Failed to update user role: ${e.message}`);
-      }
-      throw e; // Re-throw error so component can handle UI state
-    }
-  };
+  // const handleUpdateUserRole
 
   // --- Firestore Actions (Books) ---
 
-  const addBook = async (book) => {
-    // Check permissions
-    if (!userId || (userRole !== 'librarian' && userRole !== 'admin')) {
-      setError("Permission denied: Only Librarians and Admins can add books.");
-      console.warn("Permission denied for addBook action by user:", userId, "with role:", userRole);
-      return;
-    }
-    setSubmitting(true);
-    setError(null); // Clear previous errors
-    try {
-      // Add client-side timestamp for createdAt
-      const docRef = await addDoc(collection(db, booksCollectionPath), {
-        ...book,
-        createdAt: new Date()
-      });
-      console.log("Book added with ID:", docRef.id, book.title);
-    } catch (e) {
-      console.error("Error adding document: ", e);
-      if (e.code === 'permission-denied') {
-        setError("Permission denied to add book. Check Firestore rules.");
-      } else {
-        setError(`Failed to add book: ${e.message}`);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // const addBook 
 
-  const deleteBook = async (id) => {
-    // Check permissions
-    if (!userId || (userRole !== 'librarian' && userRole !== 'admin')) {
-      setError("Permission denied: Only Librarians and Admins can delete books.");
-      console.warn("Permission denied for deleteBook action by user:", userId, "with role:", userRole);
-      return;
-    }
-    setError(null);
-    try {
-      await deleteDoc(doc(db, booksCollectionPath, id));
-      console.log("Deleted book:", id);
-    } catch (e) {
-      console.error("Error deleting document: ", e);
-      if (e.code === 'permission-denied') {
-        setError("Permission denied to delete book. Check Firestore rules.");
-      } else {
-        setError(`Failed to delete book: ${e.message}`);
-      }
-    }
-  };
+  // const deleteBook 
 
   const updateBook = async (updatedBook) => {
     // Check permissions
@@ -808,115 +521,9 @@ export default function App() {
     }
   };
 
-  const handleBorrow = async (bookId) => {
-    // Check permissions
-    if (!userId || userRole !== 'reader') {
-      setError("Permission denied: Only Readers can borrow books.");
-      console.warn("Permission denied for handleBorrow action by user:", userId, "with role:", userRole);
-      return;
-    }
-    const bookDocRef = doc(db, booksCollectionPath, bookId);
-    setError(null);
+  // const handleBorrow 
 
-    try {
-      await runTransaction(db, async (transaction) => {
-        const bookDoc = await transaction.get(bookDocRef);
-        if (!bookDoc.exists()) throw new Error("Book document does not exist!");
-
-        const bookData = bookDoc.data();
-
-        // Add more robust checks within transaction
-        if (typeof bookData.availableQuantity !== 'number' || bookData.availableQuantity <= 0) {
-          throw new Error("Book is not available or quantity is invalid.");
-        }
-
-        const currentBorrowedCopies = Array.isArray(bookData.borrowedCopies) ? bookData.borrowedCopies : [];
-        const hasBorrowed = currentBorrowedCopies.some(c => c.userId === userId);
-        if (hasBorrowed) throw new Error("You have already borrowed this book.");
-
-        const newIssueDate = new Date();
-        const newDueDate = calculateDueDate(newIssueDate);
-
-        const newBorrowCopy = {
-          userId: userId,
-          issueDate: newIssueDate, // Store as JS Date, Firestore converts to Timestamp
-          dueDate: newDueDate,   // Store as JS Date, Firestore converts to Timestamp
-          borrowId: crypto.randomUUID() // Unique ID for this specific borrow instance
-        };
-
-        const newBorrowedCopies = [...currentBorrowedCopies, newBorrowCopy];
-
-        transaction.update(bookDocRef, {
-          availableQuantity: bookData.availableQuantity - 1,
-          borrowedCopies: newBorrowedCopies
-        });
-        console.log(`Transaction update prepared for borrowing book ${bookId} by user ${userId}`);
-      });
-      console.log("Book borrowed successfully!");
-    } catch (e) {
-      console.error("Borrow transaction failed: ", e);
-      // Provide specific error messages if possible
-      if (e.message.includes("already borrowed")) {
-        setError("You have already borrowed this book.");
-      } else if (e.message.includes("not available")) {
-        setError("This book is currently not available.");
-      } else {
-        setError(`Failed to borrow book: ${e.message}`);
-      }
-    }
-  };
-
-  const handleReturn = async (bookId, borrowId) => {
-    // Check permissions
-    if (!userId || userRole !== 'reader') {
-      setError("Permission denied: Only Readers can return books.");
-      console.warn("Permission denied for handleReturn action by user:", userId, "with role:", userRole);
-      return;
-    }
-    const bookDocRef = doc(db, booksCollectionPath, bookId);
-    setError(null);
-
-    try {
-      await runTransaction(db, async (transaction) => {
-        const bookDoc = await transaction.get(bookDocRef);
-        if (!bookDoc.exists()) throw new Error("Book document does not exist!");
-
-        const bookData = bookDoc.data();
-
-        // Ensure data integrity
-        const currentBorrowedCopies = Array.isArray(bookData.borrowedCopies) ? bookData.borrowedCopies : [];
-        const totalQuantity = typeof bookData.totalQuantity === 'number' ? bookData.totalQuantity : 0;
-        let currentAvailableQuantity = typeof bookData.availableQuantity === 'number' ? bookData.availableQuantity : 0;
-
-        const borrowIndex = currentBorrowedCopies.findIndex(c => c.userId === userId && c.borrowId === borrowId);
-
-        if (borrowIndex === -1) {
-          // If the record isn't found, maybe it was already returned or there's an issue.
-          console.warn(`Borrow record not found for user ${userId} and borrowId ${borrowId} on book ${bookId}. Current copies:`, currentBorrowedCopies);
-          throw new Error("Could not find this specific borrow record to return. It might have already been returned.");
-        }
-
-        // Create the new array without the returned copy
-        const newBorrowedCopies = [
-          ...currentBorrowedCopies.slice(0, borrowIndex),
-          ...currentBorrowedCopies.slice(borrowIndex + 1)
-        ];
-
-        // Only increment available quantity if it makes sense (safety check)
-        const newAvailableQuantity = Math.min(totalQuantity, currentAvailableQuantity + 1);
-
-        transaction.update(bookDocRef, {
-          availableQuantity: newAvailableQuantity,
-          borrowedCopies: newBorrowedCopies
-        });
-        console.log(`Transaction update prepared for returning book ${bookId} by user ${userId}`);
-      });
-      console.log("Book returned successfully!");
-    } catch (e) {
-      console.error("Return transaction failed: ", e);
-      setError(`Failed to return book: ${e.message}`);
-    }
-  };
+  // const handleReturn
 
   // --- Main Render Logic ---
 

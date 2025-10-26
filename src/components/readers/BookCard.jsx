@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiKey, callGemini } from '../../config/gemini';
+import InfoModal from '../InfoModal';
 
 const BookCard = ({ book, onBorrow, hasBorrowed }) => {
     const [showSummary, setShowSummary] = useState(false);
