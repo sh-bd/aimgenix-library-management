@@ -1,21 +1,13 @@
-import { getAnalytics } from "firebase/analytics";
-import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut
-} from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
   getDoc,
-  getFirestore,
   onSnapshot,
   query,
   runTransaction,
-  setLogLevel,
   updateDoc
 } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
@@ -32,135 +24,8 @@ import { default as LoginScreen } from "./pages/Login";
 import ReaderView from "./pages/ReaderDashboard";
 import SignUpScreen from "./pages/SignUp";
 
-// --- Firebase Configuration ---
-// Reads the config as a JSON string from your .env file using Vite's import.meta.env
-// Ensure your .env file has: VITE_FIREBASE_CONFIG='{"apiKey":"...", ...}'
-let firebaseConfig;
-try {
-  // Use import.meta.env (standard for Vite)
-  // The build warning about es2015 might persist if the local build target isn't updated,
-  // but this is the correct way to access Vite env vars in the code.
-  const configString = import.meta.env?.VITE_FIREBASE_CONFIG;
-  if (configString) {
-    firebaseConfig = JSON.parse(configString);
-  } else {
-    firebaseConfig = { apiKey: "MISSING_KEY", authDomain: "MISSING_DOMAIN", projectId: "MISSING_PROJECT" };
-    console.warn("Firebase config (VITE_FIREBASE_CONFIG) not found in import.meta.env. Using placeholders.");
-  }
-} catch (e) {
-  console.error("Failed to parse VITE_FIREBASE_CONFIG from import.meta.env:", e);
-  // Use placeholder on parse error
-  firebaseConfig = { apiKey: "PARSE_ERROR", authDomain: "PARSE_ERROR", projectId: "PARSE_ERROR" };
-}
-
-
-// --- Initialize Firebase ---
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-// Initialize Analytics only if config seems valid (avoid error with placeholders)
-const analytics = firebaseConfig.measurementId ? getAnalytics(app) : null;
-
-// Enable Firestore debug logging
-setLogLevel('debug');
-
-// --- Firestore Collection Paths ---
-// Root collections for a standard Firebase project
-const booksCollectionPath = `books`;
-const usersCollectionPath = `users`;
-
-// --- Gemini API Configuration ---
-const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || "";
-if (!apiKey) {
-  console.warn("Gemini API Key (VITE_GEMINI_API_KEY) not found in import.meta.env. API calls will fail.");
-}
-const geminiModel = "gemini-2.5-flash";
-
-/**
- * Calls the Gemini API with exponential backoff for retries.
- * @param {string} userQuery - The user's prompt.
- * @param {string | null} systemInstruction - The system prompt (optional).
- * @param {boolean} jsonOutput - Whether to request a JSON response.
- * @param {Object | null} responseSchema - Custom JSON schema (optional, used when jsonOutput=true).
- * @returns {Promise<string>} The text response from the API.
- */
-async function callGemini(userQuery, systemInstruction = null, jsonOutput = false, responseSchema = null) {
-  if (!apiKey) {
-    console.error("Gemini API Key is missing. Cannot make API call.");
-    throw new Error("Gemini API Key is missing.");
-  }
-
-  // Use v1beta for system instructions and JSON schema support
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
-
-  const payload = {
-    contents: [{ parts: [{ text: userQuery }] }],
-  };
-
-  // Use systemInstruction (camelCase) for v1beta
-  if (systemInstruction) {
-    payload.systemInstruction = { parts: [{ text: systemInstruction }] };
-  }
-
-  if (jsonOutput) {
-    payload.generationConfig = {
-      responseMimeType: "application/json",
-    };
-
-    if (responseSchema) {
-      payload.generationConfig.responseSchema = responseSchema;
-    }
-  }
-
-  let retries = 0;
-  const maxRetries = 3;
-
-  while (retries < maxRetries) {
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Gemini API Error: ${response.status} ${response.statusText}`, errorBody);
-
-        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-          throw new Error(`HTTP error! status: ${response.status} - ${errorBody}`);
-        }
-
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      const candidate = result.candidates?.[0];
-
-      if (candidate && candidate.content?.parts?.[0]?.text) {
-        return candidate.content.parts[0].text;
-      } else {
-        let reason = candidate?.finishReason || "No content";
-        let safetyRatings = candidate?.safetyRatings ? JSON.stringify(candidate.safetyRatings) : "N/A";
-        console.error("Invalid response structure from Gemini API:", result);
-        throw new Error(`Invalid response structure from API. Finish Reason: ${reason}. Safety Ratings: ${safetyRatings}`);
-      }
-    } catch (error) {
-      console.warn(`API call failed (attempt ${retries + 1}):`, error.message);
-      retries++;
-
-      if (retries >= maxRetries) {
-        throw new Error(`Failed to call Gemini API after ${maxRetries} attempts: ${error.message}`);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-    }
-  }
-
-  throw new Error("API call failed after all retries.");
-}
-
-
+import { auth, booksCollectionPath, db, firebaseConfig, usersCollectionPath } from "./config/firebase";
+import { apiKey, callGemini } from "./config/gemini";
 
 // /**
 //  * Finds the earliest due date from a list of borrowed copies.

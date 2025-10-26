@@ -1,4 +1,3 @@
-// LoginScreen.jsx
 import { useState } from "react";
 
 const LoginScreen = ({ onLogin, onSwitchToSignUp, error: externalError }) => {
@@ -14,7 +13,7 @@ const LoginScreen = ({ onLogin, onSwitchToSignUp, error: externalError }) => {
 
     try {
       await onLogin(email, password);
-      console.log("✅ Login successful");
+      console.log("Login successful");
     } catch (loginError) {
       console.error("Login failed:", loginError);
 

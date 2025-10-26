@@ -1,4 +1,3 @@
-// handleSignUp.js
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../config/firebase";

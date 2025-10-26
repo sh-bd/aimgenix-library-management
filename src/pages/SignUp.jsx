@@ -16,7 +16,7 @@ const SignUpScreen = ({ onSwitchToLogin }) => {
     try {
       // Always sign up as "reader"
       await signUpUser(email, password, "reader");
-      alert("✅ Account created successfully!");
+      alert("Account created successfully!");
       setEmail("");
       setPassword("");
     } catch (err) {

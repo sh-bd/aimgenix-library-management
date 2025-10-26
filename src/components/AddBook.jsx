@@ -1,86 +1,5 @@
 import { useState } from 'react';
-
-
-const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || "";
-if (!apiKey) {
-    console.warn("Gemini API Key (VITE_GEMINI_API_KEY) not found in import.meta.env. API calls will fail.");
-}
-const geminiModel = "gemini-2.5-flash";
-async function callGemini(userQuery, systemInstruction = null, jsonOutput = false, responseSchema = null) {
-    if (!apiKey) {
-        console.error("Gemini API Key is missing. Cannot make API call.");
-        throw new Error("Gemini API Key is missing.");
-    }
-
-    // Use v1beta for system instructions and JSON schema support
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
-
-    const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
-    };
-
-    // Use systemInstruction (camelCase) for v1beta
-    if (systemInstruction) {
-        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
-    }
-
-    if (jsonOutput) {
-        payload.generationConfig = {
-            responseMimeType: "application/json",
-        };
-
-        if (responseSchema) {
-            payload.generationConfig.responseSchema = responseSchema;
-        }
-    }
-
-    let retries = 0;
-    const maxRetries = 3;
-
-    while (retries < maxRetries) {
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.text();
-                console.error(`Gemini API Error: ${response.status} ${response.statusText}`, errorBody);
-
-                if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorBody}`);
-                }
-
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            const candidate = result.candidates?.[0];
-
-            if (candidate && candidate.content?.parts?.[0]?.text) {
-                return candidate.content.parts[0].text;
-            } else {
-                let reason = candidate?.finishReason || "No content";
-                let safetyRatings = candidate?.safetyRatings ? JSON.stringify(candidate.safetyRatings) : "N/A";
-                console.error("Invalid response structure from Gemini API:", result);
-                throw new Error(`Invalid response structure from API. Finish Reason: ${reason}. Safety Ratings: ${safetyRatings}`);
-            }
-        } catch (error) {
-            console.warn(`API call failed (attempt ${retries + 1}):`, error.message);
-            retries++;
-
-            if (retries >= maxRetries) {
-                throw new Error(`Failed to call Gemini API after ${maxRetries} attempts: ${error.message}`);
-            }
-
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-        }
-    }
-
-    throw new Error("API call failed after all retries.");
-}
+import { apiKey, callGemini } from '../config/gemini';
 
 const AddBookForm = ({ onAddBook, isLoading }) => {
     const [title, setTitle] = useState('');
@@ -197,23 +116,36 @@ const AddBookForm = ({ onAddBook, isLoading }) => {
                 />
             </div>
 
-            {/* Rack */}
-            <div className="flex-1">
-                <label htmlFor="rack" className="block text-sm font-medium text-gray-700 mb-1">Rack</label>
-                <select
-                    id="rack"
-                    value={rack}
-                    onChange={(e) => setRack(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                    <option value="">Select a rack</option>
-                    <option value="ICE">ICE</option>
-                    <option value="CSE">CSE</option>
-                    <option value="Literature">Literature</option>
-                    <option value="Math">Math</option>
-                </select>
-            </div>
+            {/* Rack and Quantity Row */}
+            <div className="flex gap-4">
+                <div className="flex-1">
+                    <label htmlFor="rack" className="block text-sm font-medium text-gray-700 mb-1">Rack</label>
+                    <select
+                        id="rack"
+                        value={rack}
+                        onChange={(e) => setRack(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                        <option value="">Select a rack</option>
+                        <option value="ICE">ICE</option>
+                        <option value="CSE">CSE</option>
+                        <option value="Literature">Literature</option>
+                        <option value="Math">Math</option>
+                    </select>
+                </div>
 
+                <div className="w-32">
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input
+                        type="number"
+                        id="quantity"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        min="1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+            </div>
 
             {/* Submit Button */}
             <button

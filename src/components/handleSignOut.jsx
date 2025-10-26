@@ -13,7 +13,7 @@ export const handleSignOut = async (auth, { setBooks, setAllUsers } = {}) => {
     // Clear app data if setters provided
     if (setBooks) setBooks([]);
     if (setAllUsers) setAllUsers([]);
-    // console.log("✅ Signed out successfully!");
+    // console.log("Signed out successfully!");
   } catch (error) {
     console.error("Error signing out:", error);
     alert("Sign-out failed. Please try again.");
