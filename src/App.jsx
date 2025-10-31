@@ -212,6 +212,8 @@ const AppContent = ({
                     />
                     <LibrarianDashboard
                       books={books}
+                      userId={userId}          // ✅ ADD THIS
+                      userRole={userRole}      // ✅ ADD THIS
                       onAddBook={onAddBook}
                       onDelete={onDelete}
                       onUpdate={onUpdate}
@@ -221,6 +223,8 @@ const AppContent = ({
                 ) : userRole === 'librarian' ? (
                   <LibrarianDashboard
                     books={books}
+                    userId={userId}
+                    userRole={userRole}
                     onAddBook={onAddBook}
                     onDelete={onDelete}
                     onUpdate={onUpdate}
@@ -230,11 +234,14 @@ const AppContent = ({
                   <ReaderView
                     books={books}
                     userId={userId}
+                    userRole={userRole}        // ✅ ADD THIS
                     onBorrow={onBorrow}
                     onReturn={onReturn}
                   />
                 ) : (
-                  <p className="text-center text-red-600 font-semibold p-10">Error: Unknown user role assigned.</p>
+                  <p className="text-center text-red-600 font-semibold p-10">
+                    Error: Unknown user role assigned.
+                  </p>
                 )}
               </ProtectedRoute>
             }
@@ -244,7 +251,11 @@ const AppContent = ({
         </Routes>
       </main>
 
-      <Chatbot />
+      {/* <Chatbot /> */}
+      <Chatbot
+        userId={userId}
+        userRole={userRole}
+      />
     </>
   );
 };

@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AddBookForm from '../components/AddBook';
 import LibrarianBookItem from './LibrarianBookItem';
 
-const LibrarianDashboard = ({ books = [], onAddBook, onDelete, onUpdate, isSubmitting }) => {
+const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete, onUpdate, isSubmitting }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
     // Filter and sort books safely
@@ -22,7 +22,12 @@ const LibrarianDashboard = ({ books = [], onAddBook, onDelete, onUpdate, isSubmi
         <div className="space-y-8">
             {/* Add Book Form */}
             <section>
-                <AddBookForm onAddBook={onAddBook} isLoading={isSubmitting} />
+                <AddBookForm 
+                    onAddBook={onAddBook} 
+                    userId={userId}
+                    userRole={userRole}
+                    isLoading={isSubmitting} 
+                />
             </section>
 
             {/* Manage Collection Section */}
@@ -46,18 +51,21 @@ const LibrarianDashboard = ({ books = [], onAddBook, onDelete, onUpdate, isSubmi
                             <LibrarianBookItem
                                 key={book.id}
                                 book={book}
+                                userId={userId}
+                                userRole={userRole}
                                 onDelete={onDelete}
                                 onUpdate={onUpdate}
-                                searchQuery={searchQuery}  // <-- pass the current search input
+                                searchQuery={searchQuery}
                             />
                         ))
                     ) : (
                         <p className="text-gray-500 text-center py-4">
-                            No books match your search. Try another keyword.
+                            {searchQuery 
+                                ? "No books match your search. Try another keyword."
+                                : "No books in the library yet. Add your first book above!"}
                         </p>
                     )}
                 </ul>
-
             </section>
         </div>
     );
