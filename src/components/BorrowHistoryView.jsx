@@ -56,6 +56,50 @@ const BorrowHistoryView = ({ userId, userRole }) => {
     });
   };
 
+  // Calculate fine for a record
+  const calculateFine = (record) => {
+    if (record.status === 'returned') {
+      // If returned late, calculate fine based on return date
+      const returnDate = record.returnDate?.toDate();
+      const dueDate = record.dueDate?.toDate();
+      
+      if (!returnDate || !dueDate) return 0;
+      
+      const returnDateNormalized = new Date(returnDate);
+      returnDateNormalized.setHours(0, 0, 0, 0);
+      
+      const dueDateNormalized = new Date(dueDate);
+      dueDateNormalized.setHours(0, 0, 0, 0);
+      
+      if (returnDateNormalized > dueDateNormalized) {
+        const diffTime = returnDateNormalized.getTime() - dueDateNormalized.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays * 5; // BDT 5 per day
+      }
+      return 0;
+    }
+    
+    // If still borrowed and overdue
+    if (record.status === 'borrowed') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const dueDate = record.dueDate?.toDate();
+      if (!dueDate) return 0;
+      
+      const dueDateNormalized = new Date(dueDate);
+      dueDateNormalized.setHours(0, 0, 0, 0);
+      
+      if (dueDateNormalized < today) {
+        const diffTime = today.getTime() - dueDateNormalized.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays * 5; // BDT 5 per day
+      }
+    }
+    
+    return 0;
+  };
+
   const getStatusBadge = (record) => {
     const now = new Date();
     const dueDate = record.dueDate?.toDate();
@@ -70,6 +114,9 @@ const BorrowHistoryView = ({ userId, userRole }) => {
     
     return <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">📖 Borrowed</span>;
   };
+
+  // Calculate total fines
+  const totalFines = filteredHistory.reduce((sum, record) => sum + calculateFine(record), 0);
 
   if (loading) {
     return (
@@ -89,6 +136,11 @@ const BorrowHistoryView = ({ userId, userRole }) => {
           </h2>
           <p className="text-gray-600 mt-1">
             {filteredHistory.length} {filteredHistory.length === 1 ? 'record' : 'records'}
+            {totalFines > 0 && (
+              <span className="ml-2 text-red-600 font-semibold">
+                • Total Fines: ৳{totalFines}
+              </span>
+            )}
           </p>
         </div>
 
@@ -158,34 +210,49 @@ const BorrowHistoryView = ({ userId, userRole }) => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Fine
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredHistory.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{record.bookTitle}</div>
-                    <div className="text-xs text-gray-500">SN: {record.serialNumber}</div>
-                  </td>
-                  {(userRole === 'admin' || userRole === 'librarian') && (
+              {filteredHistory.map((record) => {
+                const fine = calculateFine(record);
+                return (
+                  <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{record.userEmail}</div>
+                      <div className="font-medium text-gray-900">{record.bookTitle}</div>
+                      <div className="text-xs text-gray-500">SN: {record.serialNumber}</div>
                     </td>
-                  )}
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {formatDate(record.borrowDate)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {formatDate(record.dueDate)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {record.returnDate ? formatDate(record.returnDate) : '—'}
-                  </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(record)}
-                  </td>
-                </tr>
-              ))}
+                    {(userRole === 'admin' || userRole === 'librarian') && (
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{record.userEmail}</div>
+                      </td>
+                    )}
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {formatDate(record.borrowDate)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {formatDate(record.dueDate)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {record.returnDate ? formatDate(record.returnDate) : '—'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {getStatusBadge(record)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {fine > 0 ? (
+                        <span className="inline-flex items-center px-3 py-1 bg-red-50 text-red-700 rounded-full text-sm font-semibold border border-red-200">
+                          ৳{fine}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">৳0</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -193,7 +260,7 @@ const BorrowHistoryView = ({ userId, userRole }) => {
 
       {/* Statistics (for Admin/Librarian) */}
       {(userRole === 'admin' || userRole === 'librarian') && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
           <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
             <div className="text-3xl mb-2">📖</div>
             <div className="text-2xl font-bold text-blue-900">
@@ -221,6 +288,14 @@ const BorrowHistoryView = ({ userId, userRole }) => {
               }).length}
             </div>
             <div className="text-sm text-red-700">Overdue Books</div>
+          </div>
+
+          <div className="bg-amber-50 rounded-xl p-6 border border-amber-200">
+            <div className="text-3xl mb-2">💰</div>
+            <div className="text-2xl font-bold text-amber-900">
+              ৳{history.reduce((sum, record) => sum + calculateFine(record), 0)}
+            </div>
+            <div className="text-sm text-amber-700">Total Fines</div>
           </div>
         </div>
       )}
