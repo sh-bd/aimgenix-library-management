@@ -13,7 +13,8 @@ const AdminDashboard = ({
     isSubmitting,
     allUsers,
     loadingUsers,
-    onUpdateRole
+    onUpdateRole,
+    onAddUser // Add this
 }) => {
     const [activeView, setActiveView] = useState('dashboard');
 
@@ -132,7 +133,9 @@ const AdminDashboard = ({
                             allUsers={allUsers}
                             loadingUsers={loadingUsers}
                             onUpdateRole={onUpdateRole}
+                            onAddUser={onAddUser} // Add this
                             currentUserId={userId}
+                            userRole={userRole} // Add this
                         />
                     )}
 

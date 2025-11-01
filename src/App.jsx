@@ -13,6 +13,7 @@ import handleUpdateUserRole from "./components/admin/handleUpdateUserRole";
 import AppHeader from "./components/AppHeader";
 import AuthContainer from './components/AuthContainer';
 import Chatbot from './components/Chatbot';
+import handleAddUser from './components/handleAddUser';
 import handleBorrow from './components/handleBorrow';
 import handleLogin from "./components/handleLogin";
 import handleReturn from './components/handleReturn';
@@ -260,6 +261,10 @@ export default function App() {
     return await handleUpdateUserRole(targetUserId, newRole, setError, userId);
   };
 
+  const handleAddUserWrapper = async (email, password, role) => {
+    return await handleAddUser(email, password, role, userId, userRole);
+  };
+
   // --- Firestore Action Wrappers ---
   const addBookWrapper = async (bookData) => {
     setSubmitting(true);
@@ -350,7 +355,7 @@ export default function App() {
     books, userId, userRole, userEmail,
     onAddBook, onDelete, onUpdate, onBorrow, onReturn,
     isSubmitting, error, setError,
-    allUsers, loadingUsers, onUpdateRole,
+    allUsers, loadingUsers, onUpdateRole, onAddUser,
     loadingBooks, onSignOut
   }) => {
     if (loadingBooks) {
@@ -405,6 +410,7 @@ export default function App() {
                       allUsers={allUsers}
                       loadingUsers={loadingUsers}
                       onUpdateRole={onUpdateRole}
+                      onAddUser={onAddUser}
                     />
                   ) : userRole === 'librarian' ? (
                     <LibrarianDashboard
@@ -415,6 +421,7 @@ export default function App() {
                       onDelete={onDelete}
                       onUpdate={onUpdate}
                       isSubmitting={isSubmitting}
+                      onAddUser={onAddUser}
                     />
                   ) : userRole === 'reader' ? (
                     <ReaderView
@@ -523,6 +530,7 @@ export default function App() {
             allUsers={allUsers}
             loadingUsers={loadingUsers}
             onUpdateRole={handleUpdateUserRoleWrapper}
+            onAddUser={handleAddUserWrapper}
             loadingBooks={loadingBooks}
             onSignOut={handleSignOutWrapper}
           />
