@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import BorrowHistoryView from '../components/BorrowHistoryView';
 import BookCard from '../components/readers/BookCard';
 import MyBookCard from '../components/readers/MyBookCard';
 
 const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [activeView, setActiveView] = useState('browse');
-    const [filterBy, setFilterBy] = useState('all'); // all, rack, genre, author, year
+    const [activeView, setActiveView] = useState(() => {
+        return localStorage.getItem('readerActiveView') || 'browse';
+    });
+    const [filterBy, setFilterBy] = useState('all');
     const [selectedFilter, setSelectedFilter] = useState('');
+
+    // ✅ Librarian Contact Information
+    const librarianInfo = {
+        name: "Librarian X",
+        email: "librarian@aimgenix.com",
+        phone: "+880 1714-202023"
+    };
+
+    useEffect(() => {
+        localStorage.setItem('readerActiveView', activeView);
+    }, [activeView]);
 
     // Memoize calculations to avoid re-running on every render
     const { myBorrowedBooks, borrowedBookIds } = React.useMemo(() => {
@@ -24,30 +38,36 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
             return null;
         };
 
-        const borrowed = books
-            .map(book => {
-                const borrowInfoRaw = book.borrowedCopies?.find(c => c.userId === userId);
-                if (!borrowInfoRaw) return null;
-
+        // ✅ FIXED: Create a separate entry for each borrow instance
+        const borrowed = [];
+        
+        books.forEach(book => {
+            // Find ALL borrow records for this user, not just the first one
+            const userBorrowRecords = book.borrowedCopies?.filter(c => c.userId === userId) || [];
+            
+            // Create a separate entry for each borrow record
+            userBorrowRecords.forEach(borrowInfoRaw => {
                 const dueDate = parseTimestamp(borrowInfoRaw.dueDate);
                 const issueDate = parseTimestamp(borrowInfoRaw.issueDate);
 
                 if (!(dueDate instanceof Date && !isNaN(dueDate))) {
                     console.warn("Skipping borrowed book due to invalid due date:", book.id, borrowInfoRaw);
-                    return null;
+                    return;
                 }
 
-                return {
+                borrowed.push({
                     ...book,
                     borrowInfo: {
                         ...borrowInfoRaw,
                         dueDate,
                         issueDate
                     }
-                };
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.borrowInfo.dueDate.getTime() - b.borrowInfo.dueDate.getTime());
+                });
+            });
+        });
+
+        // Sort by due date
+        borrowed.sort((a, b) => a.borrowInfo.dueDate.getTime() - b.borrowInfo.dueDate.getTime());
 
         const ids = new Set(borrowed.map(b => b.id));
         return { myBorrowedBooks: borrowed, borrowedBookIds: ids };
@@ -126,7 +146,7 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                 </div>
 
                 {/* Navigation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* My Books */}
                     <button
                         onClick={() => setActiveView('myBooks')}
@@ -146,7 +166,7 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                             <p className={`text-sm ${
                                 activeView === 'myBooks' ? 'text-purple-100' : 'text-gray-500'
                             }`}>
-                                View and manage your borrowed books
+                                Currently borrowed
                             </p>
                             {myBorrowedBooks.length > 0 && (
                                 <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
@@ -187,7 +207,7 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                             <p className={`text-sm ${
                                 activeView === 'browse' ? 'text-indigo-100' : 'text-gray-500'
                             }`}>
-                                Search and borrow books from library
+                                Search and borrow
                             </p>
                             <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                                 activeView === 'browse' 
@@ -206,6 +226,96 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                             </div>
                         )}
                     </button>
+
+                    {/* ✅ NEW: Borrow History */}
+                    <button
+                        onClick={() => setActiveView('history')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'history'
+                                ? 'bg-gradient-to-br from-green-500 to-green-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'history' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📜
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">My History</h3>
+                            <p className={`text-sm ${
+                                activeView === 'history' ? 'text-green-100' : 'text-gray-500'
+                            }`}>
+                                Borrow history
+                            </p>
+                        </div>
+                        {activeView === 'history' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+                </div>
+
+                {/* ✅ NEW: Librarian Contact Card - Better Position & Design */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-200">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-2xl">
+                            📞
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800">Need Help?</h3>
+                            <p className="text-sm text-gray-500">Contact our librarian</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        {/* Name */}
+                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">
+                                👤
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500 font-medium">Name</p>
+                                <p className="text-sm font-semibold text-gray-800">{librarianInfo.name}</p>
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <a 
+                            href={`mailto:${librarianInfo.email}`}
+                            className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors group"
+                        >
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                📧
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500 font-medium">Email</p>
+                                <p className="text-sm font-semibold text-blue-600 group-hover:underline truncate">
+                                    {librarianInfo.email}
+                                </p>
+                            </div>
+                        </a>
+
+                        {/* Phone */}
+                        <a 
+                            href={`tel:${librarianInfo.phone}`}
+                            className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-green-50 transition-colors group"
+                        >
+                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                📱
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500 font-medium">Phone</p>
+                                <p className="text-sm font-semibold text-green-600 group-hover:underline">
+                                    {librarianInfo.phone}
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
 
                 {/* Content Area */}
@@ -220,7 +330,7 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                                 <ul className="space-y-4 mt-4">
                                     {myBorrowedBooks.map(book => (
                                         <MyBookCard
-                                            key={book.id + (book.borrowInfo?.borrowId || '')}
+                                            key={`${book.id}-${book.borrowInfo?.borrowId || ''}`}
                                             book={book}
                                             borrowInfo={book.borrowInfo}
                                             onReturn={onReturn}
@@ -370,6 +480,13 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                                     </p>
                                 )}
                             </ul>
+                        </section>
+                    )}
+
+                    {/* ✅ NEW: Borrow History Section */}
+                    {activeView === 'history' && (
+                        <section>
+                            <BorrowHistoryView userId={userId} userRole="reader" />
                         </section>
                     )}
                 </div>

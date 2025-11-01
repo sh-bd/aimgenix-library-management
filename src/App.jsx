@@ -14,9 +14,9 @@ import AppHeader from "./components/AppHeader";
 import AuthContainer from './components/AuthContainer';
 import Chatbot from './components/Chatbot';
 import handleAddUser from './components/handleAddUser';
-import handleBorrow from './components/handleBorrow';
+import handleBorrowWithHistory from './components/handleBorrowWithHistory';
 import handleLogin from "./components/handleLogin";
-import handleReturn from './components/handleReturn';
+import handleReturnWithHistory from './components/handleReturnWithHistory';
 import HandleSignOut from "./components/handleSignOut";
 import handleSignUp from "./components/handleSignUp";
 import addBook from './components/librarian/addBook';
@@ -60,7 +60,7 @@ export default function App() {
       setAuthLoading(true);
       setAuthError(null);
       setError(null);
-      
+
       if (user) {
         try {
           const userDocRef = doc(db, usersCollectionPath, user.uid);
@@ -70,7 +70,7 @@ export default function App() {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log("Fetched user role:", userData.role);
-            
+
             if (['reader', 'librarian', 'admin'].includes(userData.role)) {
               setUserId(user.uid);
               setUserEmail(user.email);
@@ -79,30 +79,30 @@ export default function App() {
               console.error("Invalid user role found in Firestore:", userData.role);
               setAuthError("Your account has an invalid role. Contact support.");
               await signOut(auth);
-              setUserId(null); 
-              setUserEmail(null); 
+              setUserId(null);
+              setUserEmail(null);
               setUserRole(null);
             }
           } else {
             console.error("User doc not found in collection:", usersCollectionPath, "for UID:", user.uid);
             setAuthError("Your user account is not fully set up. Please sign up again or contact support.");
             await signOut(auth);
-            setUserId(null); 
-            setUserEmail(null); 
+            setUserId(null);
+            setUserEmail(null);
             setUserRole(null);
           }
         } catch (err) {
           console.error("Error fetching user role:", err);
-          
+
           if (err.code === 'unavailable' || err.message.includes('offline')) {
             setAuthError("Cannot connect to the database to verify user role. Check connection.");
           } else {
             setAuthError("Error verifying user data.");
           }
-          
+
           await signOut(auth);
-          setUserId(null); 
-          setUserEmail(null); 
+          setUserId(null);
+          setUserEmail(null);
           setUserRole(null);
         }
       } else {
@@ -110,7 +110,7 @@ export default function App() {
         setUserEmail(null);
         setUserRole(null);
       }
-      
+
       setAuthLoading(false);
     });
 
@@ -150,7 +150,7 @@ export default function App() {
           borrowedCopies: Array.isArray(data.borrowedCopies) ? data.borrowedCopies.map(copy => {
             const issueDate = copy.issueDate?.toDate ? copy.issueDate.toDate() : null;
             const dueDate = copy.dueDate?.toDate ? copy.dueDate.toDate() : null;
-            
+
             if (issueDate instanceof Date && !isNaN(issueDate) &&
               dueDate instanceof Date && !isNaN(dueDate) &&
               typeof copy.userId === 'string' && copy.userId &&
@@ -173,7 +173,7 @@ export default function App() {
       setError(null);
     }, (err) => {
       console.error("Error fetching library books:", err);
-      
+
       if (err.code === 'permission-denied') {
         setError("Permission denied fetching books. Check Firestore rules.");
       } else if (err.code === 'unavailable' || err.message.includes('offline')) {
@@ -181,7 +181,7 @@ export default function App() {
       } else {
         setError(`Error fetching library books: ${err.message}. Check console for details.`);
       }
-      
+
       setLoadingBooks(false);
       setBooks([]);
     });
@@ -224,7 +224,7 @@ export default function App() {
       setError(null);
     }, (err) => {
       console.error("Error fetching all users:", err);
-      
+
       if (err.code === 'permission-denied') {
         setError("Permission denied fetching users. Check Firestore rules.");
       } else if (err.code === 'unavailable' || err.message.includes('offline')) {
@@ -232,7 +232,7 @@ export default function App() {
       } else {
         setError(`Error fetching user list: ${err.message}. Check console for details.`);
       }
-      
+
       setLoadingUsers(false);
       setAllUsers([]);
     });
@@ -291,9 +291,9 @@ export default function App() {
       console.warn("Permission denied for updateBook action by user:", userId, "with role:", userRole);
       return;
     }
-    
+
     setError(null);
-    
+
     try {
       const bookDocRef = doc(db, booksCollectionPath, updatedBook.id);
       await updateDoc(bookDocRef, {
@@ -307,7 +307,7 @@ export default function App() {
       console.log("Book updated:", updatedBook.id);
     } catch (e) {
       console.error("Error updating document:", e);
-      
+
       if (e.code === 'permission-denied') {
         setError("Permission denied to update book. Check Firestore rules.");
       } else {
@@ -316,37 +316,26 @@ export default function App() {
     }
   };
 
-  const handleBorrowWrapper = async (bookId) => {
-    const result = await handleBorrow(bookId, userId, userRole);
-    if (!result.success && result.error) {
-      setError(result.error);
-    }
+  // Update handleBorrowWrapper to include book title
+  const handleBorrowWrapper = async (bookId, bookTitle) => {
+    console.log('🎯 BORROW WRAPPER: Starting borrow process');
+    console.log('📦 Parameters:', { bookId, bookTitle, userId, userEmail });
+    
+    // ✅ Pass all required parameters including bookTitle
+    const result = await handleBorrowWithHistory(bookId, userId, userEmail, bookTitle);
+    
+    console.log('📦 Borrow result:', result);
     return result;
   };
 
-  const handleReturnWrapper = async (bookId, borrowId) => {
-    console.log("handleReturnWrapper called with:", { bookId, borrowId, userId, userRole });
-
-    if (!userId) {
-      console.error("No user ID available");
-      alert("You must be logged in to return books");
-      return { success: false, error: "Not authenticated" };
-    }
-
-    if (!userRole) {
-      console.error("User role not loaded yet");
-      alert("Please wait for user data to load");
-      return { success: false, error: "User role not loaded" };
-    }
-
-    const result = await handleReturn(bookId, borrowId, userId, userRole);
-
-    if (result.success) {
-      alert("Book returned successfully!");
-    } else {
-      alert(result.error || "Failed to return book");
-    }
-
+  // Make sure your wrapper passes the correct parameters
+  const handleReturnWrapper = async (bookId, borrowRecord) => {
+    console.log('🔍 handleReturnWrapper called with:', { bookId, borrowRecord });
+    
+    // ✅ Pass the FULL borrowRecord object, not just userId
+    const result = await handleReturnWithHistory(bookId, borrowRecord);
+    
+    console.log('📦 Return result:', result);
     return result;
   };
 

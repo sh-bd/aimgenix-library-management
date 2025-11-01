@@ -34,6 +34,8 @@ if (import.meta.env.DEV) {
 // --- Firestore Collection Paths ---
 export const booksCollectionPath = 'books';
 export const usersCollectionPath = 'users';
+export const borrowHistoryCollectionPath = 'borrowHistory';
 
 // Named exports for easier imports
 export { analytics, app, auth, db, firebaseConfig };
+

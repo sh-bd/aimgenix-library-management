@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { apiKey, callGemini } from '../config/gemini';
+import { apiKey, callGroq } from '../config/groq';
 import { imgbbApiKey, uploadToImgBB } from '../config/imgbb';
 
 const AddBookForm = ({ onAddBook, isLoading }) => {
@@ -67,7 +67,7 @@ const AddBookForm = ({ onAddBook, isLoading }) => {
             const systemPrompt = `You are a library assistant. Your job is to find complete book details for a given book title. Respond *only* with a JSON object in the format: {"author": "Author Name", "genre": "Genre", "publicationYear": "YYYY", "isbn": "ISBN Number", "description": "Brief description"}. If you cannot find specific information, leave that field as an empty string.`;
             const userQuery = `Find the author, genre, publication year, ISBN, and a brief description for the book: "${title}"`;
 
-            const jsonString = await callGemini(userQuery, systemPrompt, true);
+            const jsonString = await callGroq(userQuery, systemPrompt, true);
             const details = JSON.parse(jsonString);
 
             if (details.author) setAuthor(details.author);

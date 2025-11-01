@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiKey, callGemini } from '../../config/gemini';
+import { apiKey, callGroq } from '../../config/groq';
 import InfoModal from '../InfoModal';
 
 const BookCard = ({ book, userId, onBorrow, hasBorrowed }) => {
@@ -29,12 +29,26 @@ const BookCard = ({ book, userId, onBorrow, hasBorrowed }) => {
 
     const handleBorrow = async () => {
         if (!canBorrow) return;
-        await onBorrow(book.id, userId);
+        
+        console.log('📚 BookCard: Borrowing book:', { 
+            bookId: book.id, 
+            bookTitle: book.title,
+            userId 
+        });
+        
+        // ✅ Pass book.title as second parameter
+        const result = await onBorrow(book.id, book.title);
+        
+        if (result?.success) {
+            // alert(`✅ Successfully borrowed "${book.title}"!`);
+        } else {
+            alert(`❌ ${result?.error || 'Failed to borrow book'}`);
+        }
     };
 
     const handleSummarize = async () => {
         if (!apiKey) {
-            setSummaryContent("Cannot summarize: Gemini API Key is missing.");
+            setSummaryContent("Cannot summarize: Groq API Key is missing.");
             setShowSummary(true);
             return;
         }
@@ -44,7 +58,7 @@ const BookCard = ({ book, userId, onBorrow, hasBorrowed }) => {
         try {
             const systemPrompt = "You are a helpful library assistant. Provide a brief, one-paragraph summary of the book.";
             const userQuery = `Book: "${book.title}" by ${book.author}`;
-            const summary = await callGemini(userQuery, systemPrompt, false);
+            const summary = await callGroq(userQuery, systemPrompt, false);
             setSummaryContent(summary);
         } catch (error) {
             console.error("Error summarizing book:", error);

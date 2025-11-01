@@ -1,4 +1,3 @@
-
 const MyBookCard = ({ book, borrowInfo, onReturn }) => {
     const dueDate = borrowInfo?.dueDate;
     const issueDate = borrowInfo?.issueDate;
@@ -10,8 +9,22 @@ const MyBookCard = ({ book, borrowInfo, onReturn }) => {
     const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
 
     const handleReturn = async () => {
-        if (window.confirm(`Return "${book.title}"?`)) {
-            await onReturn(book.id, borrowInfo.borrowId);
+        // ✅ Use the borrowInfo prop directly - it already has all the data!
+        if (!borrowInfo) {
+            console.error('❌ No borrow record found');
+            return;
+        }
+        
+        console.log('📦 Returning book with borrowInfo:', borrowInfo);
+        
+        // ✅ Pass BOTH bookId AND the full borrowInfo object
+        const result = await onReturn(book.id, borrowInfo);
+        
+        if (result?.success) {
+            // alert('✅ Book returned successfully!');
+        } else {
+            console.error('❌ Return failed:', result?.error);
+            alert(`❌ Return failed: ${result?.error || 'Unknown error'}`);
         }
     };
 
