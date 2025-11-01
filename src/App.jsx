@@ -28,252 +28,6 @@ import BookDetails from './pages/BookDetails';
 import LibrarianDashboard from "./pages/LibrarianDashboard";
 import ReaderView from "./pages/ReaderDashboard";
 
-// /**
-//  * Finds the earliest due date from a list of borrowed copies.
-//  * @param {Array} borrowedCopies - The array of borrowed copy objects from a book.
-//  * @returns {Date | null} The earliest due date as a Date object, or null if none are valid.
-//  */
-// const getNextAvailableDate = (borrowedCopies) => {
-//   if (!Array.isArray(borrowedCopies) || borrowedCopies.length === 0) {
-//     return null;
-//   }
-//   try {
-//     const validDueDates = borrowedCopies
-//       .map(c => c.dueDate)
-//       .filter(date => date instanceof Date && !isNaN(date));
-//     return validDueDates.length > 0 ? new Date(Math.min(...validDueDates.map(date => date.getTime()))) : null;
-//   } catch (e) {
-//     console.error("Error calculating next available date:", e);
-//     return null;
-//   }
-// };
-
-
-// /**
-//  * Calculates the due date, skipping Fridays and Saturdays.
-//  * @param {Date} issueDate The date the book is issued.
-//  * @returns {Date} The calculated due date.
-//  */
-// const calculateDueDate = (issueDate = new Date()) => {
-//   const dueDate = new Date(issueDate.getTime());
-//   dueDate.setDate(dueDate.getDate() + 14); // Add 14 days
-
-//   const dayOfWeek = dueDate.getDay(); // 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
-
-//   if (dayOfWeek === 5) { // If it's Friday
-//     dueDate.setDate(dueDate.getDate() + 2); // Move to Sunday
-//   } else if (dayOfWeek === 6) { // If it's Saturday
-//     dueDate.setDate(dueDate.getDate() + 1); // Move to Sunday
-//   }
-
-//   // Set time to end of day
-//   dueDate.setHours(23, 59, 59, 999);
-//   return dueDate;
-// };
-// /**
-//  * Calls the Gemini API with exponential backoff for retries.
-//  * @param {string} userQuery - The user's prompt.
-//  * @param {string | null} systemInstruction - The system prompt (optional).
-//  * @param {boolean} jsonOutput - Whether to request a JSON response.
-//  * @param {Object | null} responseSchema - Custom JSON schema (optional, used when jsonOutput=true).
-//  * @returns {Promise<string>} The text response from the API.
-//  */
-// if (!apiKey) {
-//   console.warn("Gemini API Key (VITE_GEMINI_API_KEY) not found in import.meta.env. API calls will fail.");
-// }
-
-// --- Helper Components ---
-
-// const LoadingSpinner 
-<LoadingSpinner />
-
-// const Modal 
-
-// const InfoModal 
-
-// --- Auth Components ---
-
-// const LoginScreen
-
-// const AuthContainer 
-
-// --- Library Components ---
-
-/**
- * Chatbot Modal Component
- */
-// const ChatbotModal 
-
-/**
- * Chatbot Launcher Component
- */
-// const Chatbot 
-
-/**
- * Book Card (Reader View)
- */
-// const BookCard 
-
-//   const handleSummarize 
-
-/**
- * My Borrowed Book Card (Reader View)
- */
-// const MyBookCard 
-
-/**
- * Book Management Item (Librarian View)
- */
-// const LibrarianBookItem 
-
-/**
- * Main View for Readers
- */
-// const ReaderView
-
-/**
- * Main View for Librarians
- */
-// const LibrarianDashboard 
-
-/**
- * User Role Management Item (Admin View)
- */
-// const UserRoleItem 
-
-
-/**
- * Main View for Admins
- */
-// const AdminUserManagement 
-
-
-/**
- * Main App Header
- */
-
-
-// Main App Content Component (handles routing logic)
-const AppContent = ({
-  books, userId, userRole, userEmail,
-  onAddBook, onDelete, onUpdate, onBorrow, onReturn,
-  isSubmitting, error, setError,
-  allUsers, loadingUsers, onUpdateRole,
-  loadingBooks, onSignOut
-}) => {
-  // Show loading spinner while books are loading
-  if (loadingBooks) {
-    return <LoadingSpinner />;
-  }
-
-  // Display general errors
-  if (error) {
-    return (
-      <div className="text-center p-6 sm:p-10 bg-red-100 border border-red-300 rounded-lg shadow-sm">
-        <p className="text-red-700 font-semibold text-lg mb-2">An Application Error Occurred</p>
-        <p className="text-red-600 text-sm">{error}</p>
-        <button
-          onClick={() => setError(null)}
-          className="mt-4 px-3 py-1 bg-red-200 text-red-800 rounded-md text-sm hover:bg-red-300"
-        >
-          Dismiss
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <AppHeader
-        onSignOut={onSignOut}
-        userEmail={userEmail}
-        userRole={userRole}
-      />
-
-      <main>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-          <Route
-            path="/login"
-            element={userId ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
-          />
-
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
-                {userRole === 'admin' ? (
-                  <AdminDashboard
-                    books={books}
-                    userId={userId}
-                    userRole={userRole}
-                    onAddBook={onAddBook}
-                    onDelete={onDelete}
-                    onUpdate={onUpdate}
-                    isSubmitting={isSubmitting}
-                    allUsers={allUsers}
-                    loadingUsers={loadingUsers}
-                    onUpdateRole={onUpdateRole}
-                  />
-                ) : userRole === 'librarian' ? (
-                  <LibrarianDashboard
-                    books={books}
-                    userId={userId}
-                    userRole={userRole}
-                    onAddBook={onAddBook}
-                    onDelete={onDelete}
-                    onUpdate={onUpdate}
-                    isSubmitting={isSubmitting}
-                  />
-                ) : userRole === 'reader' ? (
-                  <ReaderView
-                    books={books}
-                    userId={userId}
-                    userRole={userRole}        // ✅ ADD THIS
-                    onBorrow={onBorrow}
-                    onReturn={onReturn}
-                    onUpdate={onUpdate}
-                    onDelete={onDelete}
-                  />
-                ) : (
-                  <p className="text-center text-red-600 font-semibold p-10">
-                    Error: Unknown user role assigned.
-                  </p>
-                )}
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/book/:bookId"
-            element={
-              <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
-                <BookDetails
-                  userId={userId}
-                  userRole={userRole}
-                  onBorrow={onBorrow}
-                  onReturn={onReturn}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="*" element={<Navigate to={userId ? "/dashboard" : "/login"} replace />} />
-        </Routes>
-      </main>
-
-      {/* <Chatbot /> */}
-      <Chatbot
-        userId={userId}
-        userRole={userRole}
-      />
-    </>
-  );
-}
-
 export default function App() {
   // --- App State ---
   const [books, setBooks] = useState([]);
@@ -294,21 +48,19 @@ export default function App() {
 
   // --- Authentication Effect ---
   useEffect(() => {
-    // Check if Firebase config looks valid before proceeding
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("MISSING") || firebaseConfig.apiKey.startsWith("PARSE")) {
       console.error("Invalid Firebase configuration detected. Halting auth setup.");
       setAuthError("Firebase Configuration Error. Check .env file and console.");
       setAuthLoading(false);
-      return; // Stop execution if config is bad
+      return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setAuthLoading(true); // Set loading true at the start of check
-      // Clear errors from previous state on new auth check
+      setAuthLoading(true);
       setAuthError(null);
       setError(null);
+      
       if (user) {
-        // User is potentially logged in, try fetching role
         try {
           const userDocRef = doc(db, usersCollectionPath, user.uid);
           console.log("Attempting to fetch user doc:", userDocRef.path);
@@ -317,69 +69,66 @@ export default function App() {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log("Fetched user role:", userData.role);
+            
             if (['reader', 'librarian', 'admin'].includes(userData.role)) {
-              // Successfully authenticated and role found
-              setUserId(user.uid); // Set user ID only after role is confirmed
+              setUserId(user.uid);
               setUserEmail(user.email);
               setUserRole(userData.role);
             } else {
-              // Role in DB is invalid
               console.error("Invalid user role found in Firestore:", userData.role);
               setAuthError("Your account has an invalid role. Contact support.");
-              await signOut(auth); // Sign out user with bad role
-              // Clear state manually after sign out
-              setUserId(null); setUserEmail(null); setUserRole(null);
+              await signOut(auth);
+              setUserId(null); 
+              setUserEmail(null); 
+              setUserRole(null);
             }
           } else {
-            // User exists in Auth, but not in Firestore (e.g., signup interrupted)
             console.error("User doc not found in collection:", usersCollectionPath, "for UID:", user.uid);
-            // Provide a specific error for this case
             setAuthError("Your user account is not fully set up. Please sign up again or contact support.");
-            // Don't set auth error, allow login screen to show for signup retry
-            // Sign out the user from Auth since they don't have a valid role doc
             await signOut(auth);
-            setUserId(null); setUserEmail(null); setUserRole(null);
+            setUserId(null); 
+            setUserEmail(null); 
+            setUserRole(null);
           }
         } catch (err) {
-          // Error fetching the role document
           console.error("Error fetching user role:", err);
+          
           if (err.code === 'unavailable' || err.message.includes('offline')) {
             setAuthError("Cannot connect to the database to verify user role. Check connection.");
           } else {
             setAuthError("Error verifying user data.");
           }
-          // Sign out if role fetch fails critically
+          
           await signOut(auth);
-          setUserId(null); setUserEmail(null); setUserRole(null);
+          setUserId(null); 
+          setUserEmail(null); 
+          setUserRole(null);
         }
-
       } else {
-        // User is signed out (or never logged in)
         setUserId(null);
         setUserEmail(null);
         setUserRole(null);
       }
-      setAuthLoading(false); // Set loading false after check completes
+      
+      setAuthLoading(false);
     });
 
-    // Cleanup function
     return () => {
       console.log("Cleaning up auth listener.");
       unsubscribe();
     }
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   // --- Firestore Data Effect (Books) ---
   useEffect(() => {
-    // Only fetch if authenticated, role is determined, and auth check is complete
     if (!userId || !userRole || authLoading) {
       setBooks([]);
-      setLoadingBooks(false); // Ensure loading is false if we don't fetch
-      return () => { }; // Return an empty cleanup function if listener not attached
+      setLoadingBooks(false);
+      return () => { };
     }
 
     setLoadingBooks(true);
-    setError(null); // Clear previous errors when starting fetch
+    setError(null);
     const booksCollectionRef = collection(db, booksCollectionPath);
     console.log("Setting up Firestore listener for Books at path:", booksCollectionPath);
 
@@ -389,7 +138,6 @@ export default function App() {
       console.log("Received Book snapshot with", snapshot.docs.length, "docs.");
       const booksData = snapshot.docs.map(docSnapshot => {
         const data = docSnapshot.data();
-        // More robust validation and type conversion
         return {
           id: docSnapshot.id,
           title: typeof data.title === 'string' ? data.title : 'Unknown Title',
@@ -398,11 +146,10 @@ export default function App() {
           rack: typeof data.rack === 'string' ? data.rack : 'Unknown Rack',
           totalQuantity: typeof data.totalQuantity === 'number' && data.totalQuantity >= 0 ? data.totalQuantity : 0,
           availableQuantity: typeof data.availableQuantity === 'number' && data.availableQuantity >= 0 ? data.availableQuantity : 0,
-          // Ensure borrowedCopies is an array and filter/map safely
           borrowedCopies: Array.isArray(data.borrowedCopies) ? data.borrowedCopies.map(copy => {
-            // Validate each copy object
             const issueDate = copy.issueDate?.toDate ? copy.issueDate.toDate() : null;
             const dueDate = copy.dueDate?.toDate ? copy.dueDate.toDate() : null;
+            
             if (issueDate instanceof Date && !isNaN(issueDate) &&
               dueDate instanceof Date && !isNaN(dueDate) &&
               typeof copy.userId === 'string' && copy.userId &&
@@ -414,18 +161,18 @@ export default function App() {
                 dueDate: dueDate
               };
             }
-            return null; // Mark invalid copy structures as null
-          }).filter(copy => copy !== null) // Filter out the invalid ones
-            : [],
+            return null;
+          }).filter(copy => copy !== null) : [],
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
         };
       });
 
-      setBooks(booksData); // Let sorting happen in the components using useMemo
+      setBooks(booksData);
       setLoadingBooks(false);
-      setError(null); // Clear previous errors on success
+      setError(null);
     }, (err) => {
       console.error("Error fetching library books:", err);
+      
       if (err.code === 'permission-denied') {
         setError("Permission denied fetching books. Check Firestore rules.");
       } else if (err.code === 'unavailable' || err.message.includes('offline')) {
@@ -433,28 +180,27 @@ export default function App() {
       } else {
         setError(`Error fetching library books: ${err.message}. Check console for details.`);
       }
+      
       setLoadingBooks(false);
-      setBooks([]); // Clear books on error
+      setBooks([]);
     });
 
-    // Cleanup listener on component unmount or when dependencies change
     return () => {
       console.log("Cleaning up Firestore Book listener.");
       unsubscribe();
     };
-  }, [userId, userRole]); // Re-run when user changes
+  }, [userId, userRole]);
 
   // --- Firestore Data Effect (All Users - for Admin) ---
   useEffect(() => {
-    // Only fetch if user is admin and auth is complete
     if (userRole !== 'admin' || !userId || authLoading) {
       setAllUsers([]);
-      setLoadingUsers(false); // Ensure loading is false if not fetching
-      return () => { }; // Return empty cleanup
+      setLoadingUsers(false);
+      return () => { };
     }
 
     setLoadingUsers(true);
-    setError(null); // Clear previous errors
+    setError(null);
     const usersCollectionRef = collection(db, usersCollectionPath);
     console.log("Setting up Firestore listener for Users at path:", usersCollectionPath);
 
@@ -464,20 +210,20 @@ export default function App() {
       console.log("Received User snapshot with", snapshot.docs.length, "docs.");
       const usersData = snapshot.docs.map(docSnapshot => {
         const data = docSnapshot.data();
-        // Basic validation
         return {
           id: docSnapshot.id,
           email: typeof data.email === 'string' ? data.email : 'No Email',
-          role: ['reader', 'librarian', 'admin'].includes(data.role) ? data.role : 'reader', // Default invalid roles
+          role: ['reader', 'librarian', 'admin'].includes(data.role) ? data.role : 'reader',
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
         };
       });
 
-      setAllUsers(usersData); // Let sorting happen in the component using useMemo
+      setAllUsers(usersData);
       setLoadingUsers(false);
-      setError(null); // Clear errors on success
+      setError(null);
     }, (err) => {
       console.error("Error fetching all users:", err);
+      
       if (err.code === 'permission-denied') {
         setError("Permission denied fetching users. Check Firestore rules.");
       } else if (err.code === 'unavailable' || err.message.includes('offline')) {
@@ -485,23 +231,18 @@ export default function App() {
       } else {
         setError(`Error fetching user list: ${err.message}. Check console for details.`);
       }
+      
       setLoadingUsers(false);
-      setAllUsers([]); // Clear users on error
+      setAllUsers([]);
     });
 
-    // Cleanup listener
     return () => {
       console.log("Cleaning up Firestore User listener.");
       unsubscribe();
     };
-  }, [userId, userRole, authLoading]); // Re-run when user/role changes or auth finishes
+  }, [userId, userRole, authLoading]);
 
-
-  // ========================================
-  // 🔧 MOVE ALL WRAPPER FUNCTIONS HERE (BEFORE AppContent)
-  // ========================================
-
-  // --- Auth Actions ---
+  // --- Auth Action Wrappers ---
   const handleSignUpWrapper = async (email, password) => {
     return await handleSignUp(email, password, setAuthError);
   };
@@ -514,20 +255,19 @@ export default function App() {
     await HandleSignOut(auth, { setBooks, setAllUsers, setUserId, setUserEmail, setUserRole });
   };
 
-  // --- Admin Action ---
+  // --- Admin Action Wrapper ---
   const handleUpdateUserRoleWrapper = async (targetUserId, newRole) => {
     return await handleUpdateUserRole(targetUserId, newRole, setError, userId);
   };
 
-  // --- Firestore Actions (Books) ---
+  // --- Firestore Action Wrappers ---
   const addBookWrapper = async (bookData) => {
     setSubmitting(true);
     setError('');
-    const result = await addBook(bookData, userId, userRole); // ✅ Correct!
+    const result = await addBook(bookData, userId, userRole);
 
     if (result.success) {
       console.log('Book added successfully!');
-      // Books will auto-update via onSnapshot listener
     } else {
       setError(result.error || 'Failed to add book');
     }
@@ -546,7 +286,9 @@ export default function App() {
       console.warn("Permission denied for updateBook action by user:", userId, "with role:", userRole);
       return;
     }
+    
     setError(null);
+    
     try {
       const bookDocRef = doc(db, booksCollectionPath, updatedBook.id);
       await updateDoc(bookDocRef, {
@@ -560,6 +302,7 @@ export default function App() {
       console.log("Book updated:", updatedBook.id);
     } catch (e) {
       console.error("Error updating document:", e);
+      
       if (e.code === 'permission-denied') {
         setError("Permission denied to update book. Check Firestore rules.");
       } else {
@@ -602,10 +345,7 @@ export default function App() {
     return result;
   };
 
-  // ========================================
-  // NOW DEFINE AppContent COMPONENT (AFTER WRAPPERS)
-  // ========================================
-
+  // --- AppContent Component ---
   const AppContent = ({
     books, userId, userRole, userEmail,
     onAddBook, onDelete, onUpdate, onBorrow, onReturn,
@@ -613,12 +353,10 @@ export default function App() {
     allUsers, loadingUsers, onUpdateRole,
     loadingBooks, onSignOut
   }) => {
-    // Show loading spinner while books are loading
     if (loadingBooks) {
       return <LoadingSpinner />;
     }
 
-    // Display general errors
     if (error) {
       return (
         <div className="text-center p-6 sm:p-10 bg-red-100 border border-red-300 rounded-lg shadow-sm">
@@ -660,7 +398,7 @@ export default function App() {
                       books={books}
                       userId={userId}
                       userRole={userRole}
-                      onAddBook={addBookWrapper}
+                      onAddBook={onAddBook}
                       onDelete={onDelete}
                       onUpdate={onUpdate}
                       isSubmitting={isSubmitting}
@@ -673,7 +411,7 @@ export default function App() {
                       books={books}
                       userId={userId}
                       userRole={userRole}
-                      onAddBook={addBookWrapper}
+                      onAddBook={onAddBook}
                       onDelete={onDelete}
                       onUpdate={onUpdate}
                       isSubmitting={isSubmitting}
@@ -682,7 +420,7 @@ export default function App() {
                     <ReaderView
                       books={books}
                       userId={userId}
-                      userRole={userRole}        // ✅ ADD THIS
+                      userRole={userRole}
                       onBorrow={onBorrow}
                       onReturn={onReturn}
                       onUpdate={onUpdate}
@@ -717,7 +455,6 @@ export default function App() {
           </Routes>
         </main>
 
-        {/* <Chatbot /> */}
         <Chatbot
           userId={userId}
           userRole={userRole}

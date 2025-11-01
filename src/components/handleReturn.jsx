@@ -1,5 +1,5 @@
-import { doc, runTransaction } from "firebase/firestore";
-import { booksCollectionPath, db } from "../config/firebase";
+import { doc, runTransaction } from 'firebase/firestore';
+import { booksCollectionPath, db } from '../config/firebase';
 
 /**
  * Returns a borrowed book
@@ -20,58 +20,95 @@ const handleReturn = async (bookId, borrowId, userId, userRole) => {
     const bookDocRef = doc(db, booksCollectionPath, bookId);
 
     try {
-        await runTransaction(db, async (transaction) => {
+        const result = await runTransaction(db, async (transaction) => {
             const bookDoc = await transaction.get(bookDocRef);
 
             if (!bookDoc.exists()) {
-                throw new Error("Book document does not exist!");
+                throw new Error('Book not found.');
             }
 
             const bookData = bookDoc.data();
-            const copies = Array.isArray(bookData.copies) ? bookData.copies : [];
-            const borrowedCopies = Array.isArray(bookData.borrowedCopies) ? bookData.borrowedCopies : [];
+            const borrowedCopies = bookData.borrowedCopies || [];
 
-            // Find the borrowed copy
-            const borrowIndex = borrowedCopies.findIndex(copy => {
-                if (borrowId) {
-                    return copy.borrowId === borrowId && copy.userId === userId;
-                }
-                return copy.userId === userId;
-            });
-
-            if (borrowIndex === -1) {
-                throw new Error("You have not borrowed this book.");
-            }
-
-            const returnedCopy = borrowedCopies[borrowIndex];
-            const serialNumber = returnedCopy.serialNumber;
-
-            // Update copy status back to available
-            const updatedCopies = copies.map(copy => 
-                copy.serialNumber === serialNumber 
-                    ? { ...copy, status: 'available' }
-                    : copy
+            // Find the specific borrow record
+            const borrowIndex = borrowedCopies.findIndex(
+                copy => copy.borrowId === borrowId && copy.userId === userId
             );
 
-            // Remove from borrowed copies
-            const updatedBorrowedCopies = borrowedCopies.filter((_, index) => index !== borrowIndex);
+            if (borrowIndex === -1) {
+                throw new Error('Borrow record not found or does not belong to you.');
+            }
 
+            const borrowRecord = borrowedCopies[borrowIndex];
+            const dueDate = borrowRecord.dueDate.toDate();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of today
+
+            // Check if return is late (considering weekend grace period)
+            const isLateReturn = checkIfLateReturn(dueDate, today);
+
+            if (isLateReturn) {
+                const gracePeriodMessage = getDueDateDayName(dueDate) === 'Friday' || getDueDateDayName(dueDate) === 'Saturday'
+                    ? ' (Note: Weekend due dates have a Sunday grace period)'
+                    : '';
+                    
+                throw new Error(`This book is overdue. Due date was ${dueDate.toLocaleDateString()}.${gracePeriodMessage} Please contact the library.`);
+            }
+
+            // Remove the borrow record
+            const updatedBorrowedCopies = borrowedCopies.filter((_, index) => index !== borrowIndex);
+            const updatedAvailableQuantity = (bookData.availableQuantity || 0) + 1;
+
+            // Update the book document
             transaction.update(bookDocRef, {
-                copies: updatedCopies,
                 borrowedCopies: updatedBorrowedCopies,
-                availableQuantity: (bookData.availableQuantity || 0) + 1
+                availableQuantity: updatedAvailableQuantity
             });
 
-            console.log(`Book returned by user ${userId}, serial: ${serialNumber}`);
+            return { borrowRecord };
         });
 
-        console.log("Book returned successfully!");
-        return { success: true };
+        console.log('✅ Book returned successfully!');
+        return { success: true, borrowRecord: result.borrowRecord };
 
-    } catch (e) {
-        console.error("Return transaction failed: ", e);
-        return { success: false, error: e.message };
+    } catch (error) {
+        console.error('❌ Return transaction failed:', error);
+        return { success: false, error: error.message };
     }
+};
+
+/**
+ * Check if the return is late, considering weekend grace period
+ * If due date is Friday or Saturday, allow return until end of Sunday
+ */
+const checkIfLateReturn = (dueDate, today) => {
+    const dueDateCopy = new Date(dueDate);
+    dueDateCopy.setHours(0, 0, 0, 0);
+    
+    const dueDayOfWeek = dueDateCopy.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+    
+    // If due date is Friday (5) or Saturday (6), extend to Sunday
+    if (dueDayOfWeek === 5 || dueDayOfWeek === 6) {
+        // Calculate the following Sunday
+        const daysUntilSunday = (7 - dueDayOfWeek) % 7;
+        const gracePeriodEndDate = new Date(dueDateCopy);
+        gracePeriodEndDate.setDate(gracePeriodEndDate.getDate() + daysUntilSunday);
+        gracePeriodEndDate.setHours(23, 59, 59, 999); // End of Sunday
+        
+        // Check if today is after the grace period end
+        return today > gracePeriodEndDate;
+    }
+    
+    // For other days, check if today is after due date
+    return today > dueDateCopy;
+};
+
+/**
+ * Get the day name for a given date
+ */
+const getDueDateDayName = (date) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
 };
 
 export default handleReturn;
