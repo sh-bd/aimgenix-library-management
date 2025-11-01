@@ -1,5 +1,6 @@
 import { doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { booksCollectionPath, db } from '../config/firebase';
+import { calculateDueDate } from '../utils/dateUtils'; // ✅ Import the utility
 
 const handleBorrow = async (bookId, userId, userRole) => {
     if (!userId || userRole !== 'reader') {
@@ -35,11 +36,14 @@ const handleBorrow = async (bookId, userId, userRole) => {
             const borrowId = crypto.randomUUID();
             const serialNumber = `SN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-            // Calculate due date (14 days from now)
+            // ✅ Use the utility to calculate due date
             const issueDate = new Date();
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 14);
-            dueDate.setHours(23, 59, 59, 999);
+            const dueDate = calculateDueDate(issueDate);
+
+            console.log('📅 Borrow dates:', {
+                issue: issueDate.toLocaleDateString(),
+                due: dueDate.toLocaleDateString()
+            });
 
             // Create borrow record
             const borrowRecord = {
@@ -59,11 +63,16 @@ const handleBorrow = async (bookId, userId, userRole) => {
                 availableQuantity: updatedAvailableQuantity
             });
 
-            return { serialNumber, borrowId };
+            return { serialNumber, borrowId, dueDate };
         });
 
         console.log('✅ Book borrowed successfully!');
-        return { success: true, serialNumber: result.serialNumber, borrowId: result.borrowId };
+        return { 
+            success: true, 
+            serialNumber: result.serialNumber, 
+            borrowId: result.borrowId,
+            dueDate: result.dueDate.toLocaleDateString()
+        };
 
     } catch (error) {
         console.error('❌ Borrow transaction failed:', error);

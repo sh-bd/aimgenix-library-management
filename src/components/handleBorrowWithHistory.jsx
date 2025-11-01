@@ -1,6 +1,7 @@
 import { addDoc, arrayUnion, collection, doc, getDoc, increment, Timestamp, updateDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { booksCollectionPath, borrowHistoryCollectionPath, db } from '../config/firebase';
+import { calculateDueDate } from '../utils/dateUtils'; // ✅ Import the utility
 
 /**
  * Handles borrowing a book and records it in history
@@ -17,7 +18,6 @@ const handleBorrowWithHistory = async (bookId, userId, userEmail, bookTitle) => 
   try {
     const bookRef = doc(db, booksCollectionPath, bookId);
     
-    // If bookTitle not provided, fetch it from Firestore
     if (!bookTitle) {
       console.log('📚 Fetching book title from Firestore...');
       const bookSnap = await getDoc(bookRef);
@@ -33,18 +33,22 @@ const handleBorrowWithHistory = async (bookId, userId, userEmail, bookTitle) => 
     // Generate unique identifiers
     const borrowId = uuidv4();
     const serialNumber = `SN-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-    const issueDate = Timestamp.now();
-    const dueDate = Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)); // 14 days
+    const issueDate = new Date(); // ✅ Use Date object
+    const dueDate = calculateDueDate(issueDate); // ✅ Use the utility function
 
     console.log('🆔 Generated IDs:', { borrowId, serialNumber });
+    console.log('📅 Dates:', { 
+      issueDate: issueDate.toLocaleDateString(), 
+      dueDate: dueDate.toLocaleDateString() 
+    });
 
     // Create borrow record for the book document
     const borrowRecord = {
       userId,
       borrowId,
       serialNumber,
-      issueDate,
-      dueDate
+      issueDate: Timestamp.fromDate(issueDate), // ✅ Convert to Firestore Timestamp
+      dueDate: Timestamp.fromDate(dueDate) // ✅ Convert to Firestore Timestamp
     };
 
     console.log('📝 Updating book document...');
@@ -65,8 +69,8 @@ const handleBorrowWithHistory = async (bookId, userId, userEmail, bookTitle) => 
       bookTitle,
       userId,
       userEmail,
-      borrowDate: issueDate,
-      dueDate,
+      borrowDate: Timestamp.fromDate(issueDate),
+      dueDate: Timestamp.fromDate(dueDate),
       returnDate: null,
       status: 'borrowed',
       serialNumber,
@@ -82,9 +86,10 @@ const handleBorrowWithHistory = async (bookId, userId, userEmail, bookTitle) => 
 
     return { 
       success: true, 
-      message: `Book "${bookTitle}" borrowed successfully!`,
+      message: `Book "${bookTitle}" borrowed successfully! Due date: ${dueDate.toLocaleDateString()}`,
       borrowId,
-      historyId: historyDocRef.id
+      historyId: historyDocRef.id,
+      dueDate: dueDate.toLocaleDateString() // ✅ Return formatted due date
     };
 
   } catch (error) {
