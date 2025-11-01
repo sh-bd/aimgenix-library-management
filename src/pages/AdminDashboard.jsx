@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AdminUserManagement from '../components/AdminUserManagement';
 import BookManagement from '../components/BookManagement';
 import BorrowHistoryView from '../components/BorrowHistoryView';
+import LibraryAnalytics from '../components/LibraryAnalytics'; // Add this
 import BorrowedBooksView from '../pages/BorrowedBooksView';
 
 const AdminDashboard = ({
@@ -15,7 +16,7 @@ const AdminDashboard = ({
     allUsers,
     loadingUsers,
     onUpdateRole,
-    onAddUser // Add this
+    onAddUser
 }) => {
     const [activeView, setActiveView] = useState('dashboard');
 
@@ -29,7 +30,39 @@ const AdminDashboard = ({
                 </div>
 
                 {/* Navigation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+                    {/* Analytics - NEW */}
+                    <button
+                        onClick={() => setActiveView('analytics')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'analytics'
+                                ? 'bg-gradient-to-br from-orange-500 to-orange-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'analytics' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📊
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Analytics</h3>
+                            <p className={`text-sm ${
+                                activeView === 'analytics' ? 'text-orange-100' : 'text-gray-500'
+                            }`}>
+                                View statistics & insights
+                            </p>
+                        </div>
+                        {activeView === 'analytics' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+
                     {/* User Management */}
                     <button
                         onClick={() => setActiveView('dashboard')}
@@ -161,6 +194,10 @@ const AdminDashboard = ({
 
                 {/* Content Area */}
                 <div className="bg-white rounded-2xl shadow-lg p-6">
+                    {activeView === 'analytics' && (
+                        <LibraryAnalytics books={books} />
+                    )}
+
                     {activeView === 'dashboard' && (
                         <AdminUserManagement
                             allUsers={allUsers}
