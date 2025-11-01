@@ -10,7 +10,6 @@ import {
 import { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import handleUpdateUserRole from "./components/admin/handleUpdateUserRole";
-import AdminUserManagement from "./components/AdminUserManagement";
 import AppHeader from "./components/AppHeader";
 import AuthContainer from './components/AuthContainer';
 import Chatbot from './components/Chatbot';
@@ -24,6 +23,8 @@ import deleteBook from './components/librarian/deleteBook';
 import LoadingSpinner from "./components/LoadingSpinner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { auth, booksCollectionPath, db, firebaseConfig, usersCollectionPath } from "./config/firebase";
+import AdminDashboard from './pages/AdminDashboard';
+import BookDetails from './pages/BookDetails';
 import LibrarianDashboard from "./pages/LibrarianDashboard";
 import ReaderView from "./pages/ReaderDashboard";
 
@@ -203,23 +204,18 @@ const AppContent = ({
             element={
               <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
                 {userRole === 'admin' ? (
-                  <div className="space-y-8">
-                    <AdminUserManagement
-                      allUsers={allUsers}
-                      loadingUsers={loadingUsers}
-                      onUpdateRole={onUpdateRole}
-                      currentUserId={userId}
-                    />
-                    <LibrarianDashboard
-                      books={books}
-                      userId={userId}          // ✅ ADD THIS
-                      userRole={userRole}      // ✅ ADD THIS
-                      onAddBook={onAddBook}
-                      onDelete={onDelete}
-                      onUpdate={onUpdate}
-                      isSubmitting={isSubmitting}
-                    />
-                  </div>
+                  <AdminDashboard
+                    books={books}
+                    userId={userId}
+                    userRole={userRole}
+                    onAddBook={onAddBook}
+                    onDelete={onDelete}
+                    onUpdate={onUpdate}
+                    isSubmitting={isSubmitting}
+                    allUsers={allUsers}
+                    loadingUsers={loadingUsers}
+                    onUpdateRole={onUpdateRole}
+                  />
                 ) : userRole === 'librarian' ? (
                   <LibrarianDashboard
                     books={books}
@@ -237,12 +233,30 @@ const AppContent = ({
                     userRole={userRole}        // ✅ ADD THIS
                     onBorrow={onBorrow}
                     onReturn={onReturn}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
                   />
                 ) : (
                   <p className="text-center text-red-600 font-semibold p-10">
                     Error: Unknown user role assigned.
                   </p>
                 )}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/book/:bookId"
+            element={
+              <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
+                <BookDetails
+                  userId={userId}
+                  userRole={userRole}
+                  onBorrow={onBorrow}
+                  onReturn={onReturn}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
               </ProtectedRoute>
             }
           />
@@ -258,26 +272,25 @@ const AppContent = ({
       />
     </>
   );
-};
+}
 
 export default function App() {
-  // App State
+  // --- App State ---
   const [books, setBooks] = useState([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
-  const [submitting, setSubmitting] = useState(false); // For add book form
-  const [error, setError] = useState(null); // General app error display
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Auth State
-  const [authLoading, setAuthLoading] = useState(true); // Initial auth check
+  // --- Auth State ---
+  const [authLoading, setAuthLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'reader', 'librarian', or 'admin'
-  const [authError, setAuthError] = useState(null); // Specifically for login/signup errors
+  const [userRole, setUserRole] = useState(null);
+  const [authError, setAuthError] = useState(null);
 
-  // Admin State
+  // --- Admin State ---
   const [allUsers, setAllUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true); // Initial state should be true
-
+  const [loadingUsers, setLoadingUsers] = useState(true);
 
   // --- Authentication Effect ---
   useEffect(() => {
@@ -484,26 +497,50 @@ export default function App() {
   }, [userId, userRole, authLoading]); // Re-run when user/role changes or auth finishes
 
 
+  // ========================================
+  // 🔧 MOVE ALL WRAPPER FUNCTIONS HERE (BEFORE AppContent)
+  // ========================================
+
   // --- Auth Actions ---
+  const handleSignUpWrapper = async (email, password) => {
+    return await handleSignUp(email, password, setAuthError);
+  };
 
-  // const handleSignUp
+  const handleLoginWrapper = async (email, password) => {
+    return await handleLogin(email, password, setAuthError);
+  };
 
-  // const handleLogin
-
-  // const handleSignOut
+  const handleSignOutWrapper = async () => {
+    await HandleSignOut(auth, { setBooks, setAllUsers, setUserId, setUserEmail, setUserRole });
+  };
 
   // --- Admin Action ---
-
-  // const handleUpdateUserRole
+  const handleUpdateUserRoleWrapper = async (targetUserId, newRole) => {
+    return await handleUpdateUserRole(targetUserId, newRole, setError, userId);
+  };
 
   // --- Firestore Actions (Books) ---
+  const addBookWrapper = async (bookData) => {
+    setSubmitting(true);
+    setError('');
+    const result = await addBook(bookData, userId, userRole); // ✅ Correct!
 
-  // const addBook 
+    if (result.success) {
+      console.log('Book added successfully!');
+      // Books will auto-update via onSnapshot listener
+    } else {
+      setError(result.error || 'Failed to add book');
+    }
 
-  // const deleteBook 
+    setSubmitting(false);
+    return result;
+  };
+
+  const deleteBookWrapper = async (bookId) => {
+    return await deleteBook(bookId, userId, userRole, setError);
+  };
 
   const updateBook = async (updatedBook) => {
-    // Check permissions
     if (!userId || (userRole !== 'librarian' && userRole !== 'admin')) {
       setError("Permission denied: Only Librarians and Admins can update books.");
       console.warn("Permission denied for updateBook action by user:", userId, "with role:", userRole);
@@ -512,7 +549,6 @@ export default function App() {
     setError(null);
     try {
       const bookDocRef = doc(db, booksCollectionPath, updatedBook.id);
-      // Only update the fields that should be editable
       await updateDoc(bookDocRef, {
         title: updatedBook.title,
         author: updatedBook.author,
@@ -532,15 +568,166 @@ export default function App() {
     }
   };
 
-  // const handleBorrow 
+  const handleBorrowWrapper = async (bookId) => {
+    const result = await handleBorrow(bookId, userId, userRole);
+    if (!result.success && result.error) {
+      setError(result.error);
+    }
+    return result;
+  };
 
-  // const handleReturn
+  const handleReturnWrapper = async (bookId, borrowId) => {
+    console.log("handleReturnWrapper called with:", { bookId, borrowId, userId, userRole });
+
+    if (!userId) {
+      console.error("No user ID available");
+      alert("You must be logged in to return books");
+      return { success: false, error: "Not authenticated" };
+    }
+
+    if (!userRole) {
+      console.error("User role not loaded yet");
+      alert("Please wait for user data to load");
+      return { success: false, error: "User role not loaded" };
+    }
+
+    const result = await handleReturn(bookId, borrowId, userId, userRole);
+
+    if (result.success) {
+      alert("Book returned successfully!");
+    } else {
+      alert(result.error || "Failed to return book");
+    }
+
+    return result;
+  };
+
+  // ========================================
+  // NOW DEFINE AppContent COMPONENT (AFTER WRAPPERS)
+  // ========================================
+
+  const AppContent = ({
+    books, userId, userRole, userEmail,
+    onAddBook, onDelete, onUpdate, onBorrow, onReturn,
+    isSubmitting, error, setError,
+    allUsers, loadingUsers, onUpdateRole,
+    loadingBooks, onSignOut
+  }) => {
+    // Show loading spinner while books are loading
+    if (loadingBooks) {
+      return <LoadingSpinner />;
+    }
+
+    // Display general errors
+    if (error) {
+      return (
+        <div className="text-center p-6 sm:p-10 bg-red-100 border border-red-300 rounded-lg shadow-sm">
+          <p className="text-red-700 font-semibold text-lg mb-2">An Application Error Occurred</p>
+          <p className="text-red-600 text-sm">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-4 px-3 py-1 bg-red-200 text-red-800 rounded-md text-sm hover:bg-red-300"
+          >
+            Dismiss
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <AppHeader
+          onSignOut={onSignOut}
+          userEmail={userEmail}
+          userRole={userRole}
+        />
+
+        <main>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+            <Route
+              path="/login"
+              element={userId ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+            />
+
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
+                  {userRole === 'admin' ? (
+                    <AdminDashboard
+                      books={books}
+                      userId={userId}
+                      userRole={userRole}
+                      onAddBook={addBookWrapper}
+                      onDelete={onDelete}
+                      onUpdate={onUpdate}
+                      isSubmitting={isSubmitting}
+                      allUsers={allUsers}
+                      loadingUsers={loadingUsers}
+                      onUpdateRole={onUpdateRole}
+                    />
+                  ) : userRole === 'librarian' ? (
+                    <LibrarianDashboard
+                      books={books}
+                      userId={userId}
+                      userRole={userRole}
+                      onAddBook={addBookWrapper}
+                      onDelete={onDelete}
+                      onUpdate={onUpdate}
+                      isSubmitting={isSubmitting}
+                    />
+                  ) : userRole === 'reader' ? (
+                    <ReaderView
+                      books={books}
+                      userId={userId}
+                      userRole={userRole}        // ✅ ADD THIS
+                      onBorrow={onBorrow}
+                      onReturn={onReturn}
+                      onUpdate={onUpdate}
+                      onDelete={onDelete}
+                    />
+                  ) : (
+                    <p className="text-center text-red-600 font-semibold p-10">
+                      Error: Unknown user role assigned.
+                    </p>
+                  )}
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/book/:bookId"
+              element={
+                <ProtectedRoute isAuthenticated={!!userId} userRole={userRole}>
+                  <BookDetails
+                    userId={userId}
+                    userRole={userRole}
+                    onBorrow={onBorrow}
+                    onReturn={onReturn}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="*" element={<Navigate to={userId ? "/dashboard" : "/login"} replace />} />
+          </Routes>
+        </main>
+
+        {/* <Chatbot /> */}
+        <Chatbot
+          userId={userId}
+          userRole={userRole}
+        />
+      </>
+    );
+  };
 
   // --- Main Render Logic ---
-
-  // Show loading spinner during initial auth check AND if firebase config is invalid
   if (authLoading || (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("MISSING") || firebaseConfig.apiKey.startsWith("PARSE"))) {
-    // If config error, show specific message instead of just spinner
     if (!authLoading && authError?.includes("Firebase Configuration Error")) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-red-50 text-red-800">
@@ -553,28 +740,24 @@ export default function App() {
     return <LoadingSpinner fullScreen={true} />;
   }
 
-  // If not authenticated (and config is valid), show Login/Sign Up
   if (!userId) {
     return (
       <AuthContainer
-        onLogin={handleLogin}
-        onSignUp={handleSignUp}
-        authError={authError} // Pass down auth-specific errors
+        onLogin={handleLoginWrapper}
+        onSignUp={handleSignUpWrapper}
+        authError={authError}
       />
     );
   }
 
-  // Authenticated, but role might still be loading or errored after auth check
   if (!userRole) {
-    // This state should ideally be brief if role fetch succeeds/fails quickly
-    // If authError occurred during role fetch, display it
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100">
         <LoadingSpinner />
         <p className="mt-4 text-gray-600">Verifying user role...</p>
         {authError && <p className="mt-2 text-red-600 text-center">{authError}</p>}
         <button
-          onClick={HandleSignOut}
+          onClick={handleSignOutWrapper}
           className="mt-4 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
         >
           Sign Out and Retry Login
@@ -583,8 +766,6 @@ export default function App() {
     );
   }
 
-
-  // Main App layout for authenticated users
   return (
     <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen font-inter">
       <div className="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8 pb-24">
@@ -594,19 +775,19 @@ export default function App() {
             userId={userId}
             userRole={userRole}
             userEmail={userEmail}
-            onAddBook={addBook}
-            onDelete={deleteBook}
+            onAddBook={addBookWrapper}
+            onDelete={deleteBookWrapper}
             onUpdate={updateBook}
-            onBorrow={handleBorrow}
-            onReturn={handleReturn}
+            onBorrow={handleBorrowWrapper}
+            onReturn={handleReturnWrapper}
             isSubmitting={submitting}
             error={error}
             setError={setError}
             allUsers={allUsers}
             loadingUsers={loadingUsers}
-            onUpdateRole={handleUpdateUserRole}
+            onUpdateRole={handleUpdateUserRoleWrapper}
             loadingBooks={loadingBooks}
-            onSignOut={() => HandleSignOut(auth, { setBooks, setAllUsers })}
+            onSignOut={handleSignOutWrapper}
           />
         </Router>
       </div>

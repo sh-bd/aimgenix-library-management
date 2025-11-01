@@ -1,84 +1,73 @@
-
-import { doc, runTransaction } from 'firebase/firestore';
+import { doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { booksCollectionPath, db } from '../config/firebase';
-import { calculateDueDate } from '../utils/dateUtils';
 
-/**
- * Borrows a book for a user
- * @param {string} bookId - The ID of the book to borrow
- * @param {string} userId - The ID of the user borrowing the book
- * @param {string} userRole - The role of the user (should be 'reader')
- * @returns {Promise<{success: boolean, error?: string}>}
- */
 const handleBorrow = async (bookId, userId, userRole) => {
-    // Check permissions
     if (!userId || userRole !== 'reader') {
-        const errorMsg = "Permission denied: Only Readers can borrow books.";
-        console.warn("Permission denied for handleBorrow action by user:", userId, "with role:", userRole);
-        return { success: false, error: errorMsg };
+        return { success: false, error: 'Only readers can borrow books.' };
     }
 
     const bookDocRef = doc(db, booksCollectionPath, bookId);
 
     try {
-        await runTransaction(db, async (transaction) => {
+        const result = await runTransaction(db, async (transaction) => {
             const bookDoc = await transaction.get(bookDocRef);
 
             if (!bookDoc.exists()) {
-                throw new Error("Book document does not exist!");
+                throw new Error('Book not found.');
             }
 
             const bookData = bookDoc.data();
+            const availableQuantity = bookData.availableQuantity || 0;
+            const borrowedCopies = bookData.borrowedCopies || [];
 
-            // Add more robust checks within transaction
-            if (typeof bookData.availableQuantity !== 'number' || bookData.availableQuantity <= 0) {
-                throw new Error("Book is not available or quantity is invalid.");
+            // Check if user already borrowed this book
+            const userAlreadyBorrowed = borrowedCopies.some(copy => copy.userId === userId);
+            if (userAlreadyBorrowed) {
+                throw new Error('You have already borrowed this book.');
             }
 
-            const currentBorrowedCopies = Array.isArray(bookData.borrowedCopies) ? bookData.borrowedCopies : [];
-            const hasBorrowed = currentBorrowedCopies.some(c => c.userId === userId);
-
-            if (hasBorrowed) {
-                throw new Error("You have already borrowed this book.");
+            // Check if there are available copies
+            if (availableQuantity <= 0) {
+                throw new Error('No copies available.');
             }
 
-            const newIssueDate = new Date();
-            const newDueDate = calculateDueDate(newIssueDate);
+            // Generate a unique borrow ID and serial number
+            const borrowId = crypto.randomUUID();
+            const serialNumber = `SN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-            const newBorrowCopy = {
-                userId: userId,
-                issueDate: newIssueDate, // Store as JS Date, Firestore converts to Timestamp
-                dueDate: newDueDate,     // Store as JS Date, Firestore converts to Timestamp
-                borrowId: crypto.randomUUID() // Unique ID for this specific borrow instance
+            // Calculate due date (14 days from now)
+            const issueDate = new Date();
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 14);
+            dueDate.setHours(23, 59, 59, 999);
+
+            // Create borrow record
+            const borrowRecord = {
+                userId,
+                borrowId,
+                serialNumber,
+                issueDate: Timestamp.fromDate(issueDate),
+                dueDate: Timestamp.fromDate(dueDate)
             };
 
-            const newBorrowedCopies = [...currentBorrowedCopies, newBorrowCopy];
+            // Update book document
+            const updatedBorrowedCopies = [...borrowedCopies, borrowRecord];
+            const updatedAvailableQuantity = availableQuantity - 1;
 
             transaction.update(bookDocRef, {
-                availableQuantity: bookData.availableQuantity - 1,
-                borrowedCopies: newBorrowedCopies
+                borrowedCopies: updatedBorrowedCopies,
+                availableQuantity: updatedAvailableQuantity
             });
 
-            console.log(`Transaction update prepared for borrowing book ${bookId} by user ${userId}`);
+            return { serialNumber, borrowId };
         });
 
-        console.log("Book borrowed successfully!");
-        return { success: true };
+        console.log('✅ Book borrowed successfully!');
+        return { success: true, serialNumber: result.serialNumber, borrowId: result.borrowId };
 
-    } catch (e) {
-        console.error("Borrow transaction failed: ", e);
-
-        // Provide specific error messages
-        let errorMsg;
-        if (e.message.includes("already borrowed")) {
-            errorMsg = "You have already borrowed this book.";
-        } else if (e.message.includes("not available")) {
-            errorMsg = "This book is currently not available.";
-        } else {
-            errorMsg = `Failed to borrow book: ${e.message}`;
-        }
-
-        return { success: false, error: errorMsg };
+    } catch (error) {
+        console.error('❌ Borrow transaction failed:', error);
+        return { success: false, error: error.message };
     }
 };
 

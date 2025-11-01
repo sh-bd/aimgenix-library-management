@@ -1,72 +1,105 @@
-import { useMemo, useState } from 'react';
-import AddBookForm from '../components/AddBook';
-import LibrarianBookItem from './LibrarianBookItem';
+import { useState } from 'react';
+import BookManagement from '../components/BookManagement';
+import BorrowedBooksView from '../pages/BorrowedBooksView';
 
 const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete, onUpdate, isSubmitting }) => {
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Filter and sort books safely
-    const filteredBooks = useMemo(() => {
-        if (!Array.isArray(books)) return [];
-        const lowerQuery = searchQuery.toLowerCase();
-        return [...books]
-            .filter(book =>
-                (book.title || '').toLowerCase().includes(lowerQuery) ||
-                (book.author || '').toLowerCase().includes(lowerQuery) ||
-                (book.genre || '').toLowerCase().includes(lowerQuery)
-            )
-            .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    }, [books, searchQuery]);
+    const [activeView, setActiveView] = useState('manageBooks');
 
     return (
-        <div className="space-y-8">
-            {/* Add Book Form */}
-            <section>
-                <AddBookForm 
-                    onAddBook={onAddBook} 
-                    userId={userId}
-                    userRole={userRole}
-                    isLoading={isSubmitting} 
-                />
-            </section>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+            <div className="container mx-auto px-4 max-w-7xl">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold text-gray-800 mb-2">Librarian Dashboard</h1>
+                    <p className="text-gray-600">Manage your library collection</p>
+                </div>
 
-            {/* Manage Collection Section */}
-            <section className="bg-white/50 backdrop-blur-sm rounded-lg shadow-inner p-4 sm:p-6 space-y-4">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                    Manage Collection ({filteredBooks.length} books)
-                </h2>
+                {/* Navigation Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Book Collection */}
+                    <button
+                        onClick={() => setActiveView('manageBooks')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'manageBooks'
+                                ? 'bg-gradient-to-br from-green-500 to-green-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'manageBooks' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📚
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Book Collection</h3>
+                            <p className={`text-sm ${
+                                activeView === 'manageBooks' ? 'text-green-100' : 'text-gray-500'
+                            }`}>
+                                Add, edit, and organize books
+                            </p>
+                        </div>
+                        {activeView === 'manageBooks' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
 
-                {/* Search Box */}
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by title, author, or genre..."
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                />
+                    {/* Borrowed Books */}
+                    <button
+                        onClick={() => setActiveView('borrowedBooks')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'borrowedBooks'
+                                ? 'bg-gradient-to-br from-cyan-500 to-cyan-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'borrowedBooks' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📋
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Borrowed Books</h3>
+                            <p className={`text-sm ${
+                                activeView === 'borrowedBooks' ? 'text-cyan-100' : 'text-gray-500'
+                            }`}>
+                                Track all borrowed books and returns
+                            </p>
+                        </div>
+                        {activeView === 'borrowedBooks' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+                </div>
 
-                <ul className="space-y-4 mt-4">
-                    {filteredBooks.length > 0 ? (
-                        filteredBooks.map(book => (
-                            <LibrarianBookItem
-                                key={book.id}
-                                book={book}
-                                userId={userId}
-                                userRole={userRole}
-                                onDelete={onDelete}
-                                onUpdate={onUpdate}
-                                searchQuery={searchQuery}
-                            />
-                        ))
-                    ) : (
-                        <p className="text-gray-500 text-center py-4">
-                            {searchQuery 
-                                ? "No books match your search. Try another keyword."
-                                : "No books in the library yet. Add your first book above!"}
-                        </p>
+                {/* Content Area */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                    {activeView === 'manageBooks' && (
+                        <BookManagement
+                            books={books}
+                            userId={userId}
+                            userRole={userRole}
+                            onAddBook={onAddBook}
+                            onDelete={onDelete}
+                            onUpdate={onUpdate}
+                            isSubmitting={isSubmitting}
+                        />
                     )}
-                </ul>
-            </section>
+
+                    {activeView === 'borrowedBooks' && (
+                        <BorrowedBooksView userRole={userRole} />
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

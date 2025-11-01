@@ -1,6 +1,18 @@
-
 import { addDoc, collection } from 'firebase/firestore';
 import { booksCollectionPath, db } from '../../config/firebase';
+
+/**
+ * Generates serial numbers for book copies
+ * @param {string} bookId - The book ID (first 8 chars)
+ * @param {number} quantity - Number of copies
+ * @returns {Array} Array of serial numbers
+ */
+const generateSerialNumbers = (bookId, quantity) => {
+    const prefix = bookId.substring(0, 8).toUpperCase();
+    return Array.from({ length: quantity }, (_, i) => 
+        `${prefix}-${String(i + 1).padStart(4, '0')}`
+    );
+};
 
 /**
  * Adds a new book to the library
@@ -18,10 +30,33 @@ const addBook = async (book, userId, userRole) => {
     }
 
     try {
-        // Add client-side timestamp for createdAt
+        // First create the book document to get the ID
         const docRef = await addDoc(collection(db, booksCollectionPath), {
             ...book,
-            createdAt: new Date()
+            createdAt: new Date(),
+            copies: [], // Will be updated with serial numbers
+            borrowedCopies: []
+        });
+
+        // Generate serial numbers using the document ID
+        const serialNumbers = generateSerialNumbers(docRef.id, book.totalQuantity);
+        
+        // Create copy objects with serial numbers
+        const copies = serialNumbers.map(serialNumber => ({
+            serialNumber,
+            status: 'available', // 'available' | 'borrowed'
+            borrowedBy: null,
+            issueDate: null,
+            dueDate: null,
+            borrowId: null
+        }));
+
+        // Update the document with copies
+        await addDoc(collection(db, booksCollectionPath), {
+            ...book,
+            createdAt: new Date(),
+            copies,
+            borrowedCopies: [] // Keep for backward compatibility, but use copies array
         });
 
         console.log("Book added with ID:", docRef.id, book.title);

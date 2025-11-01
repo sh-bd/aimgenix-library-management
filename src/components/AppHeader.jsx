@@ -16,7 +16,7 @@ const AppHeader = ({ onSignOut, userEmail, userRole }) => {
     <header className="mb-8 pb-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
       <div>
         <h1 className="text-3xl sm:text-4xl font-bold text-center sm:text-left text-indigo-800">
-          AIMGENIX Library Management
+          AIMGENIX Library
         </h1>
         {userEmail && userRole && (
           <div className="text-sm text-center sm:text-left text-gray-600 mt-1">
