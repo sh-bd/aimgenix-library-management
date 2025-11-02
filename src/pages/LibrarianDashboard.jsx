@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import BookManagement from '../components/BookManagement';
+import FineManagementView from '../components/FineManagementView';
 import LibrarianUserManagement from '../components/LibrarianUserManagement';
 import LibraryAnalytics from '../components/LibraryAnalytics';
 import ManualBorrowView from '../components/ManualBorrowView';
 import ReservationsView from '../components/ReservationsView';
-import BorrowedBooksView from '../pages/BorrowedBooksView';
+import BorrowedBooksView from './BorrowedBooksView';
 
 const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete, onUpdate, isSubmitting, onAddUser, allUsers }) => {
     const [activeView, setActiveView] = useState('analytics');
@@ -19,7 +20,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                 </div>
 
                 {/* Navigation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
                     {/* Analytics */}
                     <button
                         onClick={() => setActiveView('analytics')}
@@ -84,7 +85,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         )}
                     </button>
 
-                    {/* Issue Books - NEW */}
+                    {/* Issue Books */}
                     <button
                         onClick={() => setActiveView('issueBooks')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
@@ -148,7 +149,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         )}
                     </button>
 
-                    {/* Reservations - NEW */}
+                    {/* Reservations */}
                     <button
                         onClick={() => setActiveView('reservations')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
@@ -171,6 +172,38 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                             </p>
                         </div>
                         {activeView === 'reservations' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+
+                    {/* Fine Management */}
+                    <button
+                        onClick={() => setActiveView('fines')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'fines'
+                                ? 'bg-gradient-to-br from-red-500 to-red-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'fines' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                💰
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Fines</h3>
+                            <p className={`text-sm ${
+                                activeView === 'fines' ? 'text-red-100' : 'text-gray-500'
+                            }`}>
+                                Overdue
+                            </p>
+                        </div>
+                        {activeView === 'fines' && (
                             <div className="absolute top-4 right-4">
                                 <span className="flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -252,6 +285,10 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
 
                     {activeView === 'manageUsers' && (
                         <LibrarianUserManagement onAddUser={onAddUser} />
+                    )}
+
+                    {activeView === 'fines' && (
+                        <FineManagementView allUsers={allUsers} />
                     )}
                 </div>
             </div>

@@ -13,6 +13,7 @@ import handleUpdateUserRole from "./components/admin/handleUpdateUserRole";
 import AppHeader from "./components/AppHeader";
 import AuthContainer from './components/AuthContainer';
 import Chatbot from './components/Chatbot';
+import FineManagementView from './components/FineManagementView';
 import handleAddUser from './components/handleAddUser';
 import handleBorrowWithHistory from './components/handleBorrowWithHistory';
 import handleLogin from "./components/handleLogin";
@@ -494,6 +495,28 @@ export default function App() {
                     userRole={userRole}
                     userId={userId}
                   />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+
+            <Route
+              path="/admin/fines"
+              element={
+                userRole === 'admin' || userRole === 'librarian' ? (
+                  <FineManagementView allUsers={allUsers} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+
+            <Route
+              path="/librarian/fines"
+              element={
+                userRole === 'librarian' ? (
+                  <FineManagementView allUsers={allUsers} />
                 ) : (
                   <Navigate to="/" />
                 )
