@@ -129,12 +129,6 @@ const BorrowedBooksView = ({ userRole }) => {
                         Overdue: <span className="font-semibold text-red-600">{borrowedBooks.filter(b => b.isOverdue).length}</span>
                     </p>
                 </div>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                    ← Back
-                </button>
             </div>
 
             {/* Search and Filter */}
