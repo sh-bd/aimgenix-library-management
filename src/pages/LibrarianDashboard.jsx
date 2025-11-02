@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import BookManagement from '../components/BookManagement';
-import BorrowHistoryView from '../components/BorrowHistoryView';
 import LibrarianUserManagement from '../components/LibrarianUserManagement';
-import LibraryAnalytics from '../components/LibraryAnalytics'; // Add this
+import LibraryAnalytics from '../components/LibraryAnalytics';
+import ManualBorrowView from '../components/ManualBorrowView';
+import ReservationsView from '../components/ReservationsView';
 import BorrowedBooksView from '../pages/BorrowedBooksView';
 
-const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete, onUpdate, isSubmitting, onAddUser }) => {
-    const [activeView, setActiveView] = useState('manageBooks');
+const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete, onUpdate, isSubmitting, onAddUser, allUsers }) => {
+    const [activeView, setActiveView] = useState('analytics');
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
@@ -18,8 +19,8 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                 </div>
 
                 {/* Navigation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-                    {/* Analytics - NEW */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                    {/* Analytics */}
                     <button
                         onClick={() => setActiveView('analytics')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
@@ -38,7 +39,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                             <p className={`text-sm ${
                                 activeView === 'analytics' ? 'text-orange-100' : 'text-gray-500'
                             }`}>
-                                View statistics & insights
+                                Statistics
                             </p>
                         </div>
                         {activeView === 'analytics' && (
@@ -56,7 +57,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         onClick={() => setActiveView('manageBooks')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                             activeView === 'manageBooks'
-                                ? 'bg-gradient-to-br from-green-500 to-green-700 text-white shadow-xl'
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl'
                                 : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
                         }`}
                     >
@@ -66,14 +67,46 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                             }`}>
                                 📚
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Book Collection</h3>
+                            <h3 className="text-xl font-bold mb-2">Books</h3>
                             <p className={`text-sm ${
-                                activeView === 'manageBooks' ? 'text-green-100' : 'text-gray-500'
+                                activeView === 'manageBooks' ? 'text-blue-100' : 'text-gray-500'
                             }`}>
-                                Add, edit, and organize books
+                                Manage
                             </p>
                         </div>
                         {activeView === 'manageBooks' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+
+                    {/* Issue Books - NEW */}
+                    <button
+                        onClick={() => setActiveView('issueBooks')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'issueBooks'
+                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'issueBooks' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📤
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Issue</h3>
+                            <p className={`text-sm ${
+                                activeView === 'issueBooks' ? 'text-indigo-100' : 'text-gray-500'
+                            }`}>
+                                To Users
+                            </p>
+                        </div>
+                        {activeView === 'issueBooks' && (
                             <div className="absolute top-4 right-4">
                                 <span className="flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -88,7 +121,7 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         onClick={() => setActiveView('borrowedBooks')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                             activeView === 'borrowedBooks'
-                                ? 'bg-gradient-to-br from-cyan-500 to-cyan-700 text-white shadow-xl'
+                                ? 'bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-xl'
                                 : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
                         }`}
                     >
@@ -96,13 +129,13 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
                                 activeView === 'borrowedBooks' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                📋
+                                📖
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Borrowed Books</h3>
+                            <h3 className="text-xl font-bold mb-2">Borrowed</h3>
                             <p className={`text-sm ${
-                                activeView === 'borrowedBooks' ? 'text-cyan-100' : 'text-gray-500'
+                                activeView === 'borrowedBooks' ? 'text-purple-100' : 'text-gray-500'
                             }`}>
-                                Track all borrowed books and returns
+                                Active
                             </p>
                         </div>
                         {activeView === 'borrowedBooks' && (
@@ -115,29 +148,29 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         )}
                     </button>
 
-                    {/* User Management - NEW */}
+                    {/* Reservations - NEW */}
                     <button
-                        onClick={() => setActiveView('manageUsers')}
+                        onClick={() => setActiveView('reservations')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                            activeView === 'manageUsers'
-                                ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl'
+                            activeView === 'reservations'
+                                ? 'bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-xl'
                                 : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
                         }`}
                     >
                         <div className="relative z-10">
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
-                                activeView === 'manageUsers' ? '' : 'filter grayscale group-hover:grayscale-0'
+                                activeView === 'reservations' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                👥
+                                📌
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Add Readers</h3>
+                            <h3 className="text-xl font-bold mb-2">Reserved</h3>
                             <p className={`text-sm ${
-                                activeView === 'manageUsers' ? 'text-blue-100' : 'text-gray-500'
+                                activeView === 'reservations' ? 'text-amber-100' : 'text-gray-500'
                             }`}>
-                                Create new reader accounts
+                                Bookings
                             </p>
                         </div>
-                        {activeView === 'manageUsers' && (
+                        {activeView === 'reservations' && (
                             <div className="absolute top-4 right-4">
                                 <span className="flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -147,29 +180,29 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                         )}
                     </button>
 
-                    {/* Borrow History - NEW */}
+                    {/* User Management */}
                     <button
-                        onClick={() => setActiveView('borrowHistory')}
+                        onClick={() => setActiveView('manageUsers')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                            activeView === 'borrowHistory'
-                                ? 'bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-xl'
+                            activeView === 'manageUsers'
+                                ? 'bg-gradient-to-br from-green-500 to-green-700 text-white shadow-xl'
                                 : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
                         }`}
                     >
                         <div className="relative z-10">
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
-                                activeView === 'borrowHistory' ? '' : 'filter grayscale group-hover:grayscale-0'
+                                activeView === 'manageUsers' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                ⏳
+                                👥
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Borrow History</h3>
+                            <h3 className="text-xl font-bold mb-2">Users</h3>
                             <p className={`text-sm ${
-                                activeView === 'borrowHistory' ? 'text-purple-100' : 'text-gray-500'
+                                activeView === 'manageUsers' ? 'text-green-100' : 'text-gray-500'
                             }`}>
-                                View past borrowings and returns
+                                Manage
                             </p>
                         </div>
-                        {activeView === 'borrowHistory' && (
+                        {activeView === 'manageUsers' && (
                             <div className="absolute top-4 right-4">
                                 <span className="flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -189,28 +222,36 @@ const LibrarianDashboard = ({ books = [], userId, userRole, onAddBook, onDelete,
                     {activeView === 'manageBooks' && (
                         <BookManagement
                             books={books}
-                            userId={userId}
-                            userRole={userRole}
                             onAddBook={onAddBook}
                             onDelete={onDelete}
                             onUpdate={onUpdate}
                             isSubmitting={isSubmitting}
-                        />
-                    )}
-
-                    {activeView === 'borrowedBooks' && (
-                        <BorrowedBooksView userRole={userRole} />
-                    )}
-
-                    {activeView === 'manageUsers' && (
-                        <LibrarianUserManagement
-                            onAddUser={onAddUser}
                             userRole={userRole}
                         />
                     )}
 
-                    {activeView === 'borrowHistory' && (
-                        <BorrowHistoryView userId={userId} userRole={userRole} />
+                    {activeView === 'issueBooks' && (
+                        <ManualBorrowView
+                            books={books}
+                            allUsers={allUsers}
+                            performedBy={userId}
+                        />
+                    )}
+
+                    {activeView === 'borrowedBooks' && (
+                        <BorrowedBooksView
+                            books={books}
+                            userId={userId}
+                            userRole={userRole}
+                        />
+                    )}
+
+                    {activeView === 'reservations' && (
+                        <ReservationsView userId={userId} userRole={userRole} />
+                    )}
+
+                    {activeView === 'manageUsers' && (
+                        <LibrarianUserManagement onAddUser={onAddUser} />
                     )}
                 </div>
             </div>

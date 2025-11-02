@@ -102,7 +102,7 @@ const AppHeader = ({ onSignOut, userEmail, userRole, userId }) => {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex-1">
           <h1 className="text-3xl sm:text-4xl font-bold text-center sm:text-left text-indigo-800">
-            AIMGENIX Library
+            AIMGENIX
           </h1>
           {userEmail && userRole && (
             <div className="text-sm text-center sm:text-left text-gray-600 mt-1">

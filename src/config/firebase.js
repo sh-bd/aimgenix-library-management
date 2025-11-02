@@ -1,41 +1,66 @@
-import { getAnalytics } from 'firebase/analytics';
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, setLogLevel } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// --- Load and parse Firebase config from Vite env ---
+// Parse Firebase configuration from JSON string or use individual env vars
 let firebaseConfig;
-try {
-    const configString = import.meta.env?.VITE_FIREBASE_CONFIG;
-    firebaseConfig = configString ? JSON.parse(configString) : {};
-    if (!configString) {
-        console.warn("Firebase config missing (VITE_FIREBASE_CONFIG not set). Using empty object.");
-    }
-} catch (e) {
-    console.error('Invalid Firebase config JSON:', e);
-    firebaseConfig = {};
+
+if (import.meta.env.VITE_FIREBASE_CONFIG) {
+  // Parse JSON string config
+  try {
+    firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
+    console.log('✅ Using VITE_FIREBASE_CONFIG (JSON format)');
+  } catch (error) {
+    console.error('❌ Failed to parse VITE_FIREBASE_CONFIG:', error);
+    throw new Error('Invalid Firebase configuration JSON');
+  }
+} else {
+  // Use individual env vars
+  firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
+  };
+  console.log('✅ Using individual Firebase env variables');
 }
 
-// --- Initialize Firebase ---
+// Validate Firebase configuration
+const validateFirebaseConfig = () => {
+  const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+  const missingKeys = requiredKeys.filter(key => !firebaseConfig[key]);
+  
+  if (missingKeys.length > 0) {
+    console.error('❌ Missing Firebase configuration keys:', missingKeys);
+    console.error('Please check your .env file and ensure Firebase variables are set correctly.');
+    return false;
+  }
+  
+  console.log('✅ Firebase configuration validated successfully');
+  return true;
+};
+
+// Validate before initializing
+if (!validateFirebaseConfig()) {
+  throw new Error('Firebase configuration is incomplete. Please check your .env file.');
+}
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
-// Only initialize Analytics if a measurementId exists (browser-only)
-const analytics = typeof window !== 'undefined' && firebaseConfig.measurementId
-    ? getAnalytics(app)
-    : null;
+// Initialize Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-// Optional: enable Firestore debug logs in development only
-if (import.meta.env.DEV) {
-    setLogLevel('debug');
-}
+// Export Firebase config for validation in App.jsx
+export { firebaseConfig };
 
-// --- Firestore Collection Paths ---
-export const booksCollectionPath = 'books';
-export const usersCollectionPath = 'users';
-export const borrowHistoryCollectionPath = 'borrowHistory';
-
-// Named exports for easier imports
-export { analytics, app, auth, db, firebaseConfig };
+// Collection paths
+export const booksCollectionPath = "books";
+export const borrowHistoryCollectionPath = "borrowHistory";
+export const reservationsCollectionPath = "reservations";
+export const usersCollectionPath = "users";
 

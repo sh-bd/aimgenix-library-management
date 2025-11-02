@@ -22,29 +22,31 @@ import handleSignUp from "./components/handleSignUp";
 import addBook from './components/librarian/addBook';
 import deleteBook from './components/librarian/deleteBook';
 import LoadingSpinner from "./components/LoadingSpinner";
+import ManualBorrowView from './components/ManualBorrowView';
 import ProtectedRoute from "./components/ProtectedRoute";
 import { auth, booksCollectionPath, db, firebaseConfig, usersCollectionPath } from "./config/firebase";
 import AdminDashboard from './pages/AdminDashboard';
 import BookDetails from './pages/BookDetails';
+import BorrowedBooksView from './pages/BorrowedBooksView';
 import LibrarianDashboard from "./pages/LibrarianDashboard";
 import ReaderView from "./pages/ReaderDashboard";
 
 export default function App() {
   // --- App State ---
   const [books, setBooks] = useState([]);
-  const [loadingBooks, setLoadingBooks] = useState(true);
+  const [allUsers, setAllUsers] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   // --- Auth State ---
   const [authLoading, setAuthLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
-  const [userEmail, setUserEmail] = useState(null);
-  const [userRole, setUserRole] = useState(null);
   const [authError, setAuthError] = useState(null);
 
   // --- Admin State ---
-  const [allUsers, setAllUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
   // --- Authentication Effect ---
@@ -124,11 +126,11 @@ export default function App() {
   useEffect(() => {
     if (!userId || !userRole || authLoading) {
       setBooks([]);
-      setLoadingBooks(false);
+      setLoading(false);
       return () => { };
     }
 
-    setLoadingBooks(true);
+    setLoading(true);
     setError(null);
     const booksCollectionRef = collection(db, booksCollectionPath);
     console.log("Setting up Firestore listener for Books at path:", booksCollectionPath);
@@ -169,7 +171,7 @@ export default function App() {
       });
 
       setBooks(booksData);
-      setLoadingBooks(false);
+      setLoading(false);
       setError(null);
     }, (err) => {
       console.error("Error fetching library books:", err);
@@ -182,7 +184,7 @@ export default function App() {
         setError(`Error fetching library books: ${err.message}. Check console for details.`);
       }
 
-      setLoadingBooks(false);
+      setLoading(false);
       setBooks([]);
     });
 
@@ -192,9 +194,10 @@ export default function App() {
     };
   }, [userId, userRole]);
 
-  // --- Firestore Data Effect (All Users - for Admin) ---
+  // --- Firestore Data Effect (All Users - for Admin AND Librarian) ---
   useEffect(() => {
-    if (userRole !== 'admin' || !userId || authLoading) {
+    // ✅ CHANGE: Allow both admin AND librarian to fetch users
+    if ((userRole !== 'admin' && userRole !== 'librarian') || !userId || authLoading) {
       setAllUsers([]);
       setLoadingUsers(false);
       return () => { };
@@ -203,17 +206,18 @@ export default function App() {
     setLoadingUsers(true);
     setError(null);
     const usersCollectionRef = collection(db, usersCollectionPath);
-    console.log("Setting up Firestore listener for Users at path:", usersCollectionPath);
+    console.log("✅ Setting up Firestore listener for Users at path:", usersCollectionPath);
 
     const q = query(usersCollectionRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log("Received User snapshot with", snapshot.docs.length, "docs.");
+      console.log("✅ Received User snapshot with", snapshot.docs.length, "docs.");
       const usersData = snapshot.docs.map(docSnapshot => {
         const data = docSnapshot.data();
         return {
           id: docSnapshot.id,
           email: typeof data.email === 'string' ? data.email : 'No Email',
+          name: typeof data.name === 'string' ? data.name : data.email?.split('@')[0] || 'Unknown',
           role: ['reader', 'librarian', 'admin'].includes(data.role) ? data.role : 'reader',
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
         };
@@ -222,8 +226,10 @@ export default function App() {
       setAllUsers(usersData);
       setLoadingUsers(false);
       setError(null);
+      console.log('✅ All Users loaded:', usersData);
+      console.log('✅ Readers found:', usersData.filter(u => u.role === 'reader'));
     }, (err) => {
-      console.error("Error fetching all users:", err);
+      console.error("❌ Error fetching all users:", err);
 
       if (err.code === 'permission-denied') {
         setError("Permission denied fetching users. Check Firestore rules.");
@@ -345,7 +351,8 @@ export default function App() {
     onAddBook, onDelete, onUpdate, onBorrow, onReturn,
     isSubmitting, error, setError,
     allUsers, loadingUsers, onUpdateRole, onAddUser,
-    loadingBooks, onSignOut
+    loadingBooks, // ✅ ADD THIS PARAMETER
+    onSignOut
   }) => {
     if (loadingBooks) {
       return <LoadingSpinner />;
@@ -412,12 +419,13 @@ export default function App() {
                       onUpdate={onUpdate}
                       isSubmitting={isSubmitting}
                       onAddUser={onAddUser}
+                      allUsers={allUsers}
                     />
                   ) : userRole === 'reader' ? (
                     <ReaderView
                       books={books}
                       userId={userId}
-                      userRole={userRole}
+                      userEmail={userEmail}
                       onBorrow={onBorrow}
                       onReturn={onReturn}
                       onUpdate={onUpdate}
@@ -448,6 +456,50 @@ export default function App() {
               }
             />
 
+            <Route
+              path="/admin/manual-borrow"
+              element={
+                userRole === 'admin' || userRole === 'librarian' ? (
+                  <ManualBorrowView
+                    books={books}
+                    allUsers={allUsers}
+                    performedBy={userId}
+                  />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+
+            <Route
+              path="/librarian/manual-borrow"
+              element={
+                userRole === 'librarian' ? (
+                  <ManualBorrowView
+                    books={books}
+                    allUsers={allUsers}
+                    performedBy={userId}
+                  />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+
+            <Route
+              path="/borrowed-books"
+              element={
+                userRole === 'admin' || userRole === 'librarian' ? (
+                  <BorrowedBooksView
+                    userRole={userRole}
+                    userId={userId}
+                  />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+
             <Route path="*" element={<Navigate to={userId ? "/dashboard" : "/login"} replace />} />
           </Routes>
         </main>
@@ -455,6 +507,7 @@ export default function App() {
         <Chatbot
           userId={userId}
           userRole={userRole}
+          userEmail={userEmail}
         />
       </>
     );
@@ -521,7 +574,7 @@ export default function App() {
             loadingUsers={loadingUsers}
             onUpdateRole={handleUpdateUserRoleWrapper}
             onAddUser={handleAddUserWrapper}
-            loadingBooks={loadingBooks}
+            loadingBooks={loading} 
             onSignOut={handleSignOutWrapper}
           />
         </Router>

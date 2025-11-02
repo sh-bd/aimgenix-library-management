@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { booksCollectionPath, db, usersCollectionPath } from '../config/firebase';
 import { uploadToImgBB } from '../config/imgbb';
 
-const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
+const BookDetails = ({ userId, userRole, onDelete }) => {
     const { bookId } = useParams();
     const navigate = useNavigate();
     const [book, setBook] = useState(null);
@@ -35,7 +35,6 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
                         const userIds = bookData.borrowedCopies.map(copy => copy.userId);
                         const emailsMap = {};
 
-                        // Fetch emails for each user
                         for (const uid of userIds) {
                             try {
                                 const userDoc = doc(db, usersCollectionPath, uid);
@@ -69,65 +68,15 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
         }
     }, [bookId]);
 
-    const handleBorrow = async () => {
-        setActionLoading(true);
-        setActionMessage(null);
-        try {
-            const result = await onBorrow(book.id);
-            if (result?.success !== false) {
-                setActionMessage({ type: 'success', text: 'Book borrowed successfully!' });
-                setTimeout(async () => {
-                    const bookDoc = doc(db, booksCollectionPath, bookId);
-                    const bookSnapshot = await getDoc(bookDoc);
-                    if (bookSnapshot.exists()) {
-                        setBook({ id: bookSnapshot.id, ...bookSnapshot.data() });
-                    }
-                }, 500);
-            } else {
-                setActionMessage({ type: 'error', text: result.error || 'Failed to borrow book' });
-            }
-        } catch (err) {
-            setActionMessage({ type: 'error', text: 'Failed to borrow book' });
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleReturn = async () => {
-        setActionLoading(true);
-        setActionMessage(null);
-        try {
-            const result = await onReturn(book.id);
-            if (result?.success !== false) {
-                setActionMessage({ type: 'success', text: 'Book returned successfully!' });
-                setTimeout(async () => {
-                    const bookDoc = doc(db, booksCollectionPath, bookId);
-                    const bookSnapshot = await getDoc(bookDoc);
-                    if (bookSnapshot.exists()) {
-                        setBook({ id: bookSnapshot.id, ...bookSnapshot.data() });
-                    }
-                }, 500);
-            } else {
-                setActionMessage({ type: 'error', text: result.error || 'Failed to return book' });
-            }
-        } catch (err) {
-            setActionMessage({ type: 'error', text: 'Failed to return book' });
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
     const handleImageSelect = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             setActionMessage({ type: 'error', text: 'Please select a valid image file' });
             return;
         }
 
-        // Validate file size (max 32MB)
         if (file.size > 32 * 1024 * 1024) {
             setActionMessage({ type: 'error', text: 'Image size must be less than 32MB' });
             return;
@@ -229,7 +178,6 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
                 availableQuantity: parseInt(editedBook.availableQuantity) || 0
             });
 
-            // Update local state
             setBook(prev => ({
                 ...prev,
                 ...editedBook,
@@ -296,11 +244,11 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
     }
 
     const isAvailable = book.availableQuantity > 0;
-    const userHasBorrowed = book.borrowedCopies?.some(copy => copy.userId === userId);
     const displayThumbnail = newThumbnailUrl || book.thumbnailUrl;
     const canEditThumbnail = userRole === 'librarian' || userRole === 'admin';
     const totalCopies = book.totalQuantity || 0;
     const availableCopies = book.availableQuantity || 0;
+    const userHasBorrowed = book.borrowedCopies?.some(copy => copy.userId === userId);
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -335,7 +283,6 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
             )}
 
             {isEditingBook ? (
-                // Edit Mode
                 <div className="bg-white rounded-lg shadow-lg p-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Book Details</h2>
                     
@@ -477,7 +424,6 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
                     </div>
                 </div>
             ) : (
-                // View Mode (existing code)
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                     <div className="p-8">
                         <div className="grid md:grid-cols-3 gap-8">
@@ -505,7 +451,6 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
                                         )}
                                     </div>
 
-                                    {/* Thumbnail Edit Controls */}
                                     {canEditThumbnail && (
                                         <div className="mt-4 space-y-2">
                                             {!isEditingThumbnail ? (
@@ -606,83 +551,72 @@ const BookDetails = ({ userId, userRole, onBorrow, onReturn, onDelete }) => {
                                     </div>
                                 )}
 
-                                <div className="flex flex-wrap gap-3 pt-4">
-                                    {userRole === 'reader' && (
-                                        <>
-                                            {userHasBorrowed ? (
-                                                <button
-                                                    onClick={handleReturn}
-                                                    disabled={actionLoading}
-                                                    className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                                                >
-                                                    {actionLoading ? (
-                                                        <>
-                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                            Returning...
-                                                        </>
-                                                    ) : 'Return Book'}
-                                                </button>
-                                            ) : isAvailable ? (
-                                                <button
-                                                    onClick={handleBorrow}
-                                                    disabled={actionLoading}
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                                                >
-                                                    {actionLoading ? (
-                                                        <>
-                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                            Borrowing...
-                                                        </>
-                                                    ) : 'Borrow Book'}
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    disabled
-                                                    className="bg-gray-300 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed"
-                                                >
-                                                    Not Available
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
+                                {userRole === 'reader' && (
+                                    userHasBorrowed ? (
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                            <div className="flex items-start">
+                                                <svg className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                <div>
+                                                    <p className="text-sm font-medium text-green-800 mb-1">
+                                                        ✓ You Have Borrowed This Book
+                                                    </p>
+                                                    <p className="text-sm text-green-700">
+                                                        You currently have this book borrowed. Please return it to the library when you're done reading.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <div className="flex items-start">
+                                                <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                                </svg>
+                                                <div>
+                                                    <p className="text-sm font-medium text-blue-800 mb-1">
+                                                        📚 Visit the Library to Borrow
+                                                    </p>
+                                                    <p className="text-sm text-blue-700">
+                                                        Please visit the library in person to borrow this book. Our librarian will assist you with the borrowing process.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                )}
 
-                                    {(userRole === 'librarian' || userRole === 'admin') && (
-                                        <>
-                                            <button
-                                                onClick={handleEditBook}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-                                            >
-                                                Edit Book
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    if (window.confirm(`Are you sure you want to delete "${book.title}"?`)) {
-                                                        setActionLoading(true);
-                                                        try {
-                                                            await onDelete(bookId);
-                                                            setActionMessage({ type: 'success', text: 'Book deleted successfully!' });
-                                                            setTimeout(() => navigate(-1), 2000);
-                                                        } catch (error) {
-                                                            setActionMessage({ type: 'error', text: 'Failed to delete book.' });
-                                                        } finally {
-                                                            setActionLoading(false);
-                                                        }
+                                {(userRole === 'librarian' || userRole === 'admin') && (
+                                    <div className="flex flex-wrap gap-3 pt-4">
+                                        <button
+                                            onClick={handleEditBook}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+                                        >
+                                            Edit Book
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm(`Are you sure you want to delete "${book.title}"?`)) {
+                                                    setActionLoading(true);
+                                                    try {
+                                                        await onDelete(bookId);
+                                                        setActionMessage({ type: 'success', text: 'Book deleted successfully!' });
+                                                        setTimeout(() => navigate(-1), 2000);
+                                                    } catch (error) {
+                                                        setActionMessage({ type: 'error', text: 'Failed to delete book.' });
+                                                    } finally {
+                                                        setActionLoading(false);
                                                     }
-                                                }}
-                                                disabled={actionLoading}
-                                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
-                                            >
-                                                Delete Book
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
+                                                }
+                                            }}
+                                            disabled={actionLoading}
+                                            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            Delete Book
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

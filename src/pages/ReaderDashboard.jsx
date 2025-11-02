@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import BorrowHistoryView from '../components/BorrowHistoryView';
 import BookCard from '../components/readers/BookCard';
 import MyBookCard from '../components/readers/MyBookCard';
+import ReservationsView from '../components/ReservationsView';
 
 const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -146,7 +147,39 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                 </div>
 
                 {/* Navigation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    {/* Browse Books */}
+                    <button
+                        onClick={() => setActiveView('browse')}
+                        className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            activeView === 'browse'
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl'
+                                : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
+                        }`}
+                    >
+                        <div className="relative z-10">
+                            <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
+                                activeView === 'browse' ? '' : 'filter grayscale group-hover:grayscale-0'
+                            }`}>
+                                📚
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Browse Books</h3>
+                            <p className={`text-sm ${
+                                activeView === 'browse' ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                                {availableBooks.length} books available
+                            </p>
+                        </div>
+                        {activeView === 'browse' && (
+                            <div className="absolute top-4 right-4">
+                                <span className="flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                            </div>
+                        )}
+                    </button>
+
                     {/* My Books */}
                     <button
                         onClick={() => setActiveView('myBooks')}
@@ -160,23 +193,14 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
                                 activeView === 'myBooks' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                📚
+                                📖
                             </div>
                             <h3 className="text-xl font-bold mb-2">My Books</h3>
                             <p className={`text-sm ${
                                 activeView === 'myBooks' ? 'text-purple-100' : 'text-gray-500'
                             }`}>
-                                Currently borrowed
+                                {myBorrowedBooks.length} books borrowed
                             </p>
-                            {myBorrowedBooks.length > 0 && (
-                                <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                    activeView === 'myBooks' 
-                                        ? 'bg-white/20 text-white' 
-                                        : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                    {myBorrowedBooks.length} borrowed
-                                </div>
-                            )}
                         </div>
                         {activeView === 'myBooks' && (
                             <div className="absolute top-4 right-4">
@@ -188,36 +212,29 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                         )}
                     </button>
 
-                    {/* Browse Library */}
+                    {/* My Reservations - NEW */}
                     <button
-                        onClick={() => setActiveView('browse')}
+                        onClick={() => setActiveView('reservations')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                            activeView === 'browse'
-                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-xl'
+                            activeView === 'reservations'
+                                ? 'bg-gradient-to-br from-orange-500 to-orange-700 text-white shadow-xl'
                                 : 'bg-white text-gray-700 shadow-md hover:shadow-xl border border-gray-200'
                         }`}
                     >
                         <div className="relative z-10">
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
-                                activeView === 'browse' ? '' : 'filter grayscale group-hover:grayscale-0'
+                                activeView === 'reservations' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                🔍
+                                📌
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Browse Library</h3>
+                            <h3 className="text-xl font-bold mb-2">My Reservations</h3>
                             <p className={`text-sm ${
-                                activeView === 'browse' ? 'text-indigo-100' : 'text-gray-500'
+                                activeView === 'reservations' ? 'text-orange-100' : 'text-gray-500'
                             }`}>
-                                Search and borrow
+                                View reserved books
                             </p>
-                            <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                activeView === 'browse' 
-                                    ? 'bg-white/20 text-white' 
-                                    : 'bg-indigo-100 text-indigo-800'
-                            }`}>
-                                {books.length} available
-                            </div>
                         </div>
-                        {activeView === 'browse' && (
+                        {activeView === 'reservations' && (
                             <div className="absolute top-4 right-4">
                                 <span className="flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -227,7 +244,7 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                         )}
                     </button>
 
-                    {/* ✅ NEW: Borrow History */}
+                    {/* History */}
                     <button
                         onClick={() => setActiveView('history')}
                         className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
@@ -240,13 +257,13 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                             <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${
                                 activeView === 'history' ? '' : 'filter grayscale group-hover:grayscale-0'
                             }`}>
-                                📜
+                                📋
                             </div>
-                            <h3 className="text-xl font-bold mb-2">My History</h3>
+                            <h3 className="text-xl font-bold mb-2">History</h3>
                             <p className={`text-sm ${
                                 activeView === 'history' ? 'text-green-100' : 'text-gray-500'
                             }`}>
-                                Borrow history
+                                View borrow history
                             </p>
                         </div>
                         {activeView === 'history' && (
@@ -320,65 +337,28 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
 
                 {/* Content Area */}
                 <div className="bg-white rounded-2xl shadow-lg p-6">
-                    {/* My Borrowed Books Section */}
-                    {activeView === 'myBooks' && (
-                        <section className="space-y-4">
-                            <h2 className="text-2xl font-semibold text-gray-800">
-                                My Borrowed Books ({myBorrowedBooks.length})
-                            </h2>
-                            {myBorrowedBooks.length > 0 ? (
-                                <ul className="space-y-4 mt-4">
-                                    {myBorrowedBooks.map(book => (
-                                        <MyBookCard
-                                            key={`${book.id}-${book.borrowInfo?.borrowId || ''}`}
-                                            book={book}
-                                            borrowInfo={book.borrowInfo}
-                                            onReturn={onReturn}
-                                        />
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <div className="text-6xl mb-4">📚</div>
-                                    <p className="text-gray-500 text-lg">You haven't borrowed any books yet</p>
-                                    <button
-                                        onClick={() => setActiveView('browse')}
-                                        className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                    >
-                                        Browse Library
-                                    </button>
-                                </div>
-                            )}
-                        </section>
-                    )}
-
-                    {/* Browse Library Section */}
+                    {/* Browse Books View */}
                     {activeView === 'browse' && (
-                        <section className="space-y-4">
-                            <h2 className="text-2xl font-semibold text-gray-800">
-                                Browse Library ({availableBooks.length} books)
-                            </h2>
-
-                            {/* Search and Filter Controls */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                {/* Search Input */}
-                                <div className="md:col-span-6 relative">
-                                    <span className="absolute left-3 top-3 text-gray-400">🔍</span>
+                        <div>
+                            <div className="mb-6">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-4">Browse Books</h2>
+                                <p className="text-gray-600 mb-4">
+                                    ℹ️ <strong>Note:</strong> You can only reserve low-stock books (less than 10 copies) online. 
+                                    To borrow books, please visit the library. Our librarian will assist you!
+                                </p>
+                                
+                                <div className="flex flex-col sm:flex-row gap-4">
                                     <input
                                         type="text"
+                                        placeholder="Search by title or author..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Search by title, author, or genre..."
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                </div>
-
-                                {/* Filter Type */}
-                                <div className="md:col-span-3">
                                     <select
                                         value={filterBy}
                                         onChange={(e) => handleFilterChange(e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="all">All Books</option>
                                         <option value="rack">By Rack</option>
@@ -387,81 +367,16 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                                         <option value="year">By Year</option>
                                     </select>
                                 </div>
-
-                                {/* Filter Value */}
-                                {filterBy !== 'all' && (
-                                    <div className="md:col-span-3">
-                                        <select
-                                            value={selectedFilter}
-                                            onChange={(e) => setSelectedFilter(e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        >
-                                            <option value="">
-                                                Select {filterBy === 'rack' ? 'Rack' : filterBy === 'genre' ? 'Genre' : filterBy === 'author' ? 'Author' : 'Year'}
-                                            </option>
-                                            {filterBy === 'rack' && filterOptions.racks.map(rack => (
-                                                <option key={rack} value={rack}>{rack}</option>
-                                            ))}
-                                            {filterBy === 'genre' && filterOptions.genres.map(genre => (
-                                                <option key={genre} value={genre}>{genre}</option>
-                                            ))}
-                                            {filterBy === 'author' && filterOptions.authors.map(author => (
-                                                <option key={author} value={author}>{author}</option>
-                                            ))}
-                                            {filterBy === 'year' && filterOptions.years.map(year => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Active Filters Display */}
-                            {(searchTerm || (filterBy !== 'all' && selectedFilter)) && (
-                                <div className="flex flex-wrap gap-2 items-center">
-                                    <span className="text-sm text-gray-600">Active filters:</span>
-                                    {searchTerm && (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                                            Search: "{searchTerm}"
-                                            <button
-                                                onClick={() => setSearchTerm('')}
-                                                className="hover:text-indigo-900"
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                    )}
-                                    {filterBy !== 'all' && selectedFilter && (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                                            {filterBy === 'rack' ? '📍' : filterBy === 'genre' ? '🎭' : filterBy === 'author' ? '✍️' : '📅'} {selectedFilter}
-                                            <button
-                                                onClick={() => {
-                                                    setFilterBy('all');
-                                                    setSelectedFilter('');
-                                                }}
-                                                className="hover:text-purple-900"
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            setSearchTerm('');
-                                            setFilterBy('all');
-                                            setSelectedFilter('');
-                                        }}
-                                        className="text-sm text-gray-500 hover:text-gray-700 underline"
-                                    >
-                                        Clear all
-                                    </button>
+                            {availableBooks.length === 0 ? (
+                                <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                    <div className="text-6xl mb-4">📚</div>
+                                    <p className="text-gray-500 text-lg">No books found matching your criteria</p>
                                 </div>
-                            )}
-
-                            {/* Books List */}
-                            <ul className="space-y-4 mt-4">
-                                {availableBooks.length > 0 ? (
-                                    availableBooks.map(book => (
+                            ) : (
+                                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {availableBooks.map(book => (
                                         <BookCard
                                             key={book.id}
                                             book={book}
@@ -469,25 +384,59 @@ const ReaderView = ({ books, userId, onBorrow, onReturn }) => {
                                             onBorrow={onBorrow}
                                             hasBorrowed={borrowedBookIds.has(book.id)}
                                         />
-                                    ))
-                                ) : (
-                                    <p className="text-gray-500 text-center py-8">
-                                        {searchTerm || selectedFilter
-                                            ? `No books match your filters. Try adjusting your search.`
-                                            : books.length === 0 
-                                                ? "The library currently has no books."
-                                                : "No books available."}
-                                    </p>
-                                )}
-                            </ul>
-                        </section>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     )}
 
-                    {/* ✅ NEW: Borrow History Section */}
+                    {/* My Books View */}
+                    {activeView === 'myBooks' && (
+                        <div>
+                            <div className="mb-6">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-2">My Borrowed Books</h2>
+                                <p className="text-gray-600">
+                                    You currently have {myBorrowedBooks.length} {myBorrowedBooks.length === 1 ? 'book' : 'books'} borrowed
+                                </p>
+                            </div>
+
+                            {myBorrowedBooks.length === 0 ? (
+                                <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                    <div className="text-6xl mb-4">📖</div>
+                                    <p className="text-gray-500 text-lg">You haven't borrowed any books yet</p>
+                                    <button
+                                        onClick={() => setActiveView('browse')}
+                                        className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        Browse Books
+                                    </button>
+                                </div>
+                            ) : (
+                                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {myBorrowedBooks.map(book => {
+                                        const borrowInfo = book.borrowedCopies.find(copy => copy.userId === userId);
+                                        return (
+                                            <MyBookCard
+                                                key={book.id}
+                                                book={book}
+                                                borrowInfo={borrowInfo}
+                                                onReturn={onReturn}
+                                            />
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Reservations View - NEW */}
+                    {activeView === 'reservations' && (
+                        <ReservationsView userId={userId} userRole="reader" />
+                    )}
+
+                    {/* History View */}
                     {activeView === 'history' && (
-                        <section>
-                            <BorrowHistoryView userId={userId} userRole="reader" />
-                        </section>
+                        <BorrowHistoryView userId={userId} userRole="reader" />
                     )}
                 </div>
             </div>

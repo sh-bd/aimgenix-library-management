@@ -3,14 +3,13 @@ import { useState } from 'react';
 import { booksCollectionPath, db } from '../config/firebase';
 import { apiKey, callGroq } from '../config/groq';
 import ChatbotModal from './ChatbotModal';
-import handleBorrow from './handleBorrow';
-import handleReturn from './handleReturn';
+import handleReserve from './handleReserve';
 
-const Chatbot = ({ userId, userRole }) => {
+const Chatbot = ({ userId, userRole, userEmail }) => { // ✅ Add userEmail
     const [isOpen, setIsOpen] = useState(false);
     const [userInput, setUserInput] = useState("");
     const [chatHistory, setChatHistory] = useState([
-        { role: 'assistant', text: apiKey ? 'Hello! I am the AIMGENIX Library Assistant. I can help you find books, check availability, borrow books, and return borrowed books!' : 'Hello! Chatbot is currently unavailable (missing API key).' }
+        { role: 'assistant', text: apiKey ? 'Hello! I am the AIMGENIX Library Assistant. I can help you find books, check availability, and reserve low-stock books (less than 10 copies)!' : 'Hello! Chatbot is currently unavailable (missing API key).' }
     ]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -81,16 +80,18 @@ const Chatbot = ({ userId, userRole }) => {
 
             const availableBooks = books.filter(book => book.availableCopies > 0);
             const unavailableBooks = books.filter(book => book.availableCopies === 0);
+            const lowStockBooks = books.filter(book => book.availableCopies > 0 && book.availableCopies < 10);
             const userBorrowedBooks = userId ? getUserBorrowedBooks(books, userId) : [];
 
-            console.log("✅ Available:", availableBooks.length, "❌ Unavailable:", unavailableBooks.length, "📚 User borrowed:", userBorrowedBooks.length);
+            console.log("✅ Available:", availableBooks.length, "❌ Unavailable:", unavailableBooks.length, "⚠️ Low Stock:", lowStockBooks.length);
 
-            const availableBookList = availableBooks.map(book => 
-                `- "${book.title}" by ${book.author} (Genre: ${book.genre || 'Not specified'}, Rack: ${book.rack || 'N/A'}, Available: ${book.availableCopies}/${book.totalCopies} copies, ID: ${book.id})`
-            ).join('\n');
+            const availableBookList = availableBooks.map(book => {
+                const stockStatus = book.availableCopies < 10 ? '⚠️ LOW STOCK - Can be reserved' : 'In stock';
+                return `- "${book.title}" by ${book.author} (Genre: ${book.genre || 'Not specified'}, Rack: ${book.rack || 'N/A'}, Available: ${book.availableCopies}/${book.totalCopies} copies, Status: ${stockStatus}, ID: ${book.id})`;
+            }).join('\n');
 
             const unavailableBookList = unavailableBooks.map(book =>
-                `- "${book.title}" by ${book.author} (Genre: ${book.genre || 'Not specified'}, All ${book.totalCopies} copies borrowed)`
+                `- "${book.title}" by ${book.author} (Genre: ${book.genre || 'Not specified'}, All ${book.totalCopies} copies borrowed - Cannot reserve)`
             ).join('\n');
 
             const borrowedBookList = userBorrowedBooks.map(book =>
@@ -99,63 +100,71 @@ const Chatbot = ({ userId, userRole }) => {
 
             const systemPrompt = `You are a friendly and helpful library assistant for the AIMGENIX Library. 
 
-📚 AVAILABLE BOOKS (Can be borrowed RIGHT NOW):
+📚 AVAILABLE BOOKS (In stock):
 ${availableBookList || "No books available at the moment."}
 
-📕 CURRENTLY BORROWED BY OTHERS (All copies checked out):
+📕 CURRENTLY BORROWED BY OTHERS (Out of stock):
 ${unavailableBookList || "No books currently borrowed by others."}
 
-📖 USER'S BORROWED BOOKS (Books the current user has borrowed):
+📖 USER'S BORROWED BOOKS:
 ${borrowedBookList || "User hasn't borrowed any books yet."}
 
 Library Statistics:
 - Total unique titles: ${books.length}
 - Available for borrowing: ${availableBooks.length}
-- All copies borrowed: ${unavailableBooks.length}
+- Low stock (< 10 copies): ${lowStockBooks.length}
+- Out of stock: ${unavailableBooks.length}
 - User's borrowed books: ${userBorrowedBooks.length}
 
-CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
+IMPORTANT LIBRARY POLICIES:
 
-1. FINDING BOOKS:
+1. BORROWING POLICY - CHANGED:
+   - Users CANNOT borrow books online anymore
+   - Users must visit the library physically to borrow books
+   - Only Admin/Librarian can issue books to users
+   - When asked about borrowing: "You'll need to visit the library to borrow this book. Our librarian will help you!"
+
+2. RESERVATION POLICY (NEW):
+   - Users CAN reserve low-stock books (less than 10 copies) online
+   - Reservation is valid for 3 business days (excluding Friday and Saturday)
+   - Late collection fine: ৳5 per day after deadline
+   - Cannot reserve out-of-stock books (0 copies)
+   - When a book has < 10 copies, suggest reservation
+
+3. FINDING BOOKS:
    When asked "do you have [book]?" or "is [book] available?":
-   - Check BOTH available and borrowed lists
-   - If in AVAILABLE list: "Yes! '[Title]' is available. We have X out of Y copies in the [Rack] rack. Would you like to borrow it?"
-   - If in BORROWED BY OTHERS list: "Yes, we have '[Title]', but all copies are currently checked out."
-   - If in USER'S BORROWED list: "You already have '[Title]' borrowed!"
-   - If in NEITHER list: "I don't see that book in our catalog."
+   - Check both available and borrowed lists
+   - If available with < 10 copies: "Yes! '[Title]' is available but low in stock (X copies left). Would you like to RESERVE it for 3 days?"
+   - If available with >= 10 copies: "Yes! '[Title]' is available with X copies. Please visit the library to borrow it!"
+   - If out of stock (0 copies): "Yes, we have '[Title]', but all copies are currently borrowed. Cannot reserve at the moment."
+   - If not in catalog: "I don't see that book in our catalog."
 
-2. BORROWING BOOKS - CRITICAL:
-   When user says ANY of these: "yes", "yes please", "sure", "okay", "i want to borrow it", "borrow it", "borrow it for me":
-   - Look at the PREVIOUS message in conversation history
-   - If you mentioned a book title in your previous response, that's the book they want
-   - Respond with ONLY this format: "BORROW_BOOK:{bookId}|{bookTitle}"
-   - Example: "BORROW_BOOK:zxWMsYk0DukttoBJZZ3g|Rich Dad Poor Dad"
-   - DO NOT add any other text before or after the command!
+4. RESERVATION COMMAND:
+   When user wants to reserve a low-stock book (says "yes", "reserve it", "book it", etc.):
+   - Look at previous message to identify the book
+   - Respond with ONLY: "RESERVE_BOOK:{bookId}|{bookTitle}"
+   - Example: "RESERVE_BOOK:abc123|Rich Dad Poor Dad"
+   - DO NOT add any other text!
 
-3. RETURNING BOOKS:
-   When user wants to return a book (says "return [book]", "return it", etc.):
-   - Check if book is in USER'S BORROWED BOOKS list
-   - If yes, respond with ONLY: "RETURN_BOOK:{bookId}|{borrowId}|{bookTitle}"
-   - Example: "RETURN_BOOK:abc123|xyz789|Rich Dad Poor Dad"
-   - DO NOT add any other text before or after the command!
-   - If not borrowed: "You haven't borrowed '[Title]'.
-
-4. MAINTAIN CONVERSATION CONTEXT!
+5. MAINTAIN CONVERSATION CONTEXT:
    - Remember what YOU said in your last message
-   - If you asked "Would you like to borrow [Book]?" and user says "yes", that means they want THAT book
-   - Never ask "which book?" if you just mentioned a specific book title
+   - If you mentioned a specific book and user says "yes" or "reserve it", that's the book they want
+   - Never ask "which book?" if you just mentioned a book
 
-IMPORTANT: When responding with BORROW_BOOK or RETURN_BOOK commands, respond with ONLY that command and nothing else!`;
+IMPORTANT: 
+- Users CANNOT borrow books through chat anymore - only physical visit
+- Only low-stock books (< 10 copies) can be reserved
+- Out-of-stock books (0 copies) CANNOT be reserved
+- When responding with RESERVE_BOOK command, use ONLY that command with no extra text!`;
 
             // Build conversation history for API
             const conversationMessages = chatHistory
-                .slice(1) // Skip initial greeting
+                .slice(1)
                 .map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'assistant',
                     content: msg.text
                 }));
 
-            // Add current message
             conversationMessages.push({
                 role: 'user',
                 content: message
@@ -164,10 +173,9 @@ IMPORTANT: When responding with BORROW_BOOK or RETURN_BOOK commands, respond wit
             const response = await callGroq(conversationMessages, systemPrompt);
             console.log("💬 AI Response:", response);
 
-            // Handle borrow command
-            if (response.includes("BORROW_BOOK:")) {
-                // Extract just the command part
-                const commandMatch = response.match(/BORROW_BOOK:([^|]+)\|(.+)/);
+            // Handle reservation command
+            if (response.includes("RESERVE_BOOK:")) {
+                const commandMatch = response.match(/RESERVE_BOOK:([^|]+)\|(.+)/);
                 if (commandMatch) {
                     const bookId = commandMatch[1]?.trim();
                     const bookTitle = commandMatch[2]?.trim();
@@ -175,84 +183,37 @@ IMPORTANT: When responding with BORROW_BOOK or RETURN_BOOK commands, respond wit
                     if (!userId) {
                         setChatHistory(prev => [...prev, { 
                             role: 'assistant', 
-                            text: "Please log in first to borrow books. 📚" 
+                            text: "Please log in first to reserve books. 📚" 
                         }]);
                         setIsLoading(false);
                     } else if (userRole !== 'reader') {
                         setChatHistory(prev => [...prev, { 
                             role: 'assistant', 
-                            text: "Only readers can borrow books. Please switch to a reader account." 
+                            text: "Only readers can reserve books. Please switch to a reader account." 
+                        }]);
+                        setIsLoading(false);
+                    } else if (!userEmail) {
+                        setChatHistory(prev => [...prev, { 
+                            role: 'assistant', 
+                            text: "Cannot reserve - email address not found. Please contact support." 
                         }]);
                         setIsLoading(false);
                     } else {
-                        console.log(`🔄 Attempting to borrow book: ${bookTitle} (ID: ${bookId})`);
-                        const result = await handleBorrow(bookId, userId, userRole);
+                        console.log(`📌 Attempting to reserve book: ${bookTitle} (ID: ${bookId})`);
+                        const result = await handleReserve(bookId, userId, userEmail);
                         
                         setIsLoading(false);
                         
                         if (result.success) {
                             setChatHistory(prev => [...prev, { 
                                 role: 'assistant', 
-                                text: `Perfect! I've borrowed "${bookTitle}" for you (Serial: ${result.serialNumber}). You can see it in your "My Books" section. The due date is 14 days from now. Happy reading! 📚` 
+                                text: `✅ ${result.message}\n\n⚠️ Important: Please collect the book within 3 business days (excluding weekends). Late collection will incur a fine of ৳5 per day.` 
                             }]);
                         } else {
                             setChatHistory(prev => [...prev, { 
                                 role: 'assistant', 
-                                text: `Sorry, I couldn't borrow "${bookTitle}". ${result.error || 'Please try again.'}` 
+                                text: `❌ ${result.error}` 
                             }]);
-                        }
-                    }
-                }
-            }
-            // Handle return command
-            else if (response.includes("RETURN_BOOK:")) {
-                // Extract just the command part
-                const commandMatch = response.match(/RETURN_BOOK:([^|]+)\|([^|]+)\|(.+)/);
-                if (commandMatch) {
-                    const bookId = commandMatch[1]?.trim();
-                    const borrowId = commandMatch[2]?.trim();
-                    const bookTitle = commandMatch[3]?.trim();
-
-                    if (!userId) {
-                        setChatHistory(prev => [...prev, { 
-                            role: 'assistant', 
-                            text: "Please log in first to return books. 📚" 
-                        }]);
-                        setIsLoading(false);
-                    } else if (userRole !== 'reader') {
-                        setChatHistory(prev => [...prev, { 
-                            role: 'assistant', 
-                            text: "Only readers can return books." 
-                        }]);
-                        setIsLoading(false);
-                    } else {
-                        console.log(`🔄 Attempting to return book: ${bookTitle} (ID: ${bookId}, BorrowID: ${borrowId})`);
-                        
-                        try {
-                            const result = await handleReturn(bookId, borrowId, userId, userRole);
-                            
-                            if (result.success) {
-                                setChatHistory(prev => [...prev, { 
-                                    role: 'assistant', 
-                                    text: `Great! I've successfully returned "${bookTitle}" for you. Thank you for returning it on time! 📚✅` 
-                                }]);
-                                
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                                setIsLoading(false);
-                            } else {
-                                setChatHistory(prev => [...prev, { 
-                                    role: 'assistant', 
-                                    text: `Sorry, I couldn't return "${bookTitle}". ${result.error || 'Please try again.'}` 
-                                }]);
-                                setIsLoading(false);
-                            }
-                        } catch (error) {
-                            console.error("Return error:", error);
-                            setChatHistory(prev => [...prev, { 
-                                role: 'assistant', 
-                                text: `An error occurred while returning "${bookTitle}". Please try again.` 
-                            }]);
-                            setIsLoading(false);
                         }
                     }
                 }
